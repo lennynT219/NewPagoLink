@@ -1,0 +1,101 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>{% block title %}{% endblock %} | Pago Link</title>
+    <link href="//fonts.googleapis.com/css?family=Roboto:300,400,500,700,900&display=swap" rel="stylesheet" />
+    <link href="//fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  </head>
+  <body >
+    <div class="w3l-bootstrap-header fixed-top">
+      <nav class="navbar navbar-expand-lg navbar-light p-2">
+        <div class="container">
+          <a class="navbar-brand" href="{% url 'landing:index' %}" >
+            <span class="fa fa-credit-card"></span>
+            PagoLink
+          </a>
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+              <li class="nav-item active">
+                <a class="nav-link" href="{% url 'landing:index' %}">Inicio</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'landing:pricing'%}">Precios</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'landing:contact'%}">Contáctenos</a>
+              </li>
+            </ul>
+            <div class="form-inline">
+              <a href="{% url 'dashboard:login' %}" class="login mr-4">Inicia sesión</a>
+              <a href="#" class="btn btn-primary btn-theme">Regístrate</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </div>
+  <div class="wrapper">
+    {% block content %} {% endblock %}
+    <section class="w3l-market-footer footer-bottom">
+      <footer class="footer-28">
+        <div class="footer-bg-layer">
+          <div class="container py-lg-3">
+            <div class="row footer-top-28">
+              <div class="col-md-6 footer-list-28 mt-5">
+                <h6 class="footer-title-28">PagoLink</h6>
+                <p class="text-gray">
+                  PagoLink permite a los vendedores pequeños, medianos y grandes
+                  a cobrar por internet a través de un link de pago.
+                </p>
+                <div class="main-social-footer-28 mt-3">
+                  <ul class="social-icons">
+                  </ul>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="row">
+                  <div class="col-md-6 footer-list-28 mt-5">
+                    <h6 class="footer-title-28">Compañía</h6>
+                    <ul>
+                      <li><a href="{% url 'landing:contact'%}">Contáctenos</a></li>
+                      <li><a href="{% url 'landing:pricing'%}">Precios</a></li>
+                    </ul>
+                  </div>
+                  <div class="col-md-6 footer-list-28 mt-5">
+                    <h6 class="footer-title-28">Vendedores</h6>
+                    <ul>
+                      <li><a href="{% url 'dashboard:login' %}">Iniciar sesión</a></li>
+                      <li><a href="{% url 'dashboard:register' %}">Regístrate</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="midd-footer-28 align-center py-lg-4 py-3 mt-5">
+            <div class="container">
+              <p class="copy-footer-28 text-center">
+                &copy; 2025 PagoLink. Todos los derechos reservados.
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </section>
+  </div>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{% autoescape off %}
+Bienvenido a PagoLink.
+
+Para completar tu registro necesitamos que confirmes tu registro haciendo click en el siguiente enlace:
+http://{{ domain }}{% url 'activate_email' uidb64=uid token=token %}
+
+Un fuerte abrazo,
+Equipo de PagoLink.
+
+{% endautoescape %}
