@@ -2,7 +2,9 @@
 Bienvenido a PagoLink.
 
 Para completar tu registro necesitamos que confirmes tu registro haciendo click en el siguiente enlace:
-{# http://{{ domain }}{% url 'activate_email' uidb64=uid token=token %} #}
+http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}
+
+Si no puedes hacer clic en el enlace, cópielo y pégalo en la barra de direcciones de tu navegador.
 
 Un fuerte abrazo,
 Equipo de PagoLink.

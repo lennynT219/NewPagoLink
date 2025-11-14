@@ -1,0 +1,22 @@
+{% extends "landing/layouts/base.html" %}
+
+{% block content %}
+<div class="container mt-5 main">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card text-center shadow-sm">
+        <div class="card-body p-5">
+          <h1 class="h3 mb-3 fw-normal text-danger">Enlace Inválido</h1>
+          <p>
+            Este enlace de activación no es válido o ya ha expirado.
+          </p>
+          <p>
+            Si crees que esto es un error, por favor, intenta registrarte de nuevo o contacta a soporte.
+          </p>
+          <a href="{% url 'dashboard:register' %}" class="btn btn-secondary mt-3">Volver al Registro</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

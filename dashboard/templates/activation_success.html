@@ -1,0 +1,22 @@
+{% extends "landing/layouts/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card text-center shadow-sm">
+        <div class="card-body p-5">
+          <h1 class="h3 mb-3 fw-normal text-success">¡Cuenta Activada!</h1>
+          <p>
+            Tu cuenta ha sido activada exitosamente.
+          </p>
+          <p>
+            Ya hemos iniciado sesión por ti. Puedes ir directamente a tu panel de control.
+          </p>
+          <a href="{% url 'dashboard:login' %}" class="btn btn-primary mt-3">Ir al Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
