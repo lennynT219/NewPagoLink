@@ -22,7 +22,7 @@ def create_user(form_data):
     is_active=False,
   )
 
-  CustomUser.objects.create(user=User, phone=form_data['phone'], idetificacion=form_data['idetificacion'])
+  CustomUser.objects.create(user=user, phone=form_data['phone'], identification=form_data['identification'])  # type: ignore
 
   return user
 

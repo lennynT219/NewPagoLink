@@ -76,7 +76,7 @@ class RegisterForm(forms.Form):
       }
     ),
   )
-  identified = forms.IntegerField(
+  identification = forms.IntegerField(
     label='Cédula de identidad',
     widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Cédula', 'type': 'number'}),
   )
@@ -116,40 +116,3 @@ class RegisterForm(forms.Form):
     if User.objects.filter(email=email).exists():
       raise forms.ValidationError('Este correo ya está en uso.')
     return email
-
-  def save(self, req):
-    cd = self.cleaned_data
-    user = User.objects.create_user(
-      username=cd['email'],
-      email=cd['email'],
-      first_name=cd['firstname'],
-      last_name=cd['lastname'],
-      password=cd['password'],
-    )
-    CustomUser.objects.create(  # type: ignore
-      user=user,
-      phone=cd['phone'],
-      identification=cd['identified'],
-    )
-    login(req, user)
-
-    # Enviar correo de activation
-    current_site = get_current_site(req)
-    mail_subject = 'Activa tu cuenta en PagoLink'
-    message = render_to_string(
-      'dashboard/activation_email.html',
-      {
-        'domain': current_site.domain,
-        'uid': urlsafe_b64encode(force_bytes(user.pk)),
-        'token': account_activation_token.make_token(user),
-      },
-    )
-    email = EmailMessage(
-      mail_subject,
-      message,
-      'PagoLink <pagoslinkexpress@gmail.com>',
-      to=[cd['email']],
-    )
-    email.send()
-
-    return user
