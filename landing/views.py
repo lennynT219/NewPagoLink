@@ -1,14 +1,14 @@
-from django.shortcuts import render
+from django.views.generic import TemplateView
 
 
 # Create your views here.
-def index(req):
-  return render(req, 'index.html')
+class Index(TemplateView):
+  template_name = 'index.html'
 
 
-def contact(req):
-  return render(req, 'contact.html')
+class Contact(TemplateView):
+  template_name = 'contact.html'
 
 
-def pricing(req):
-  return render(req, 'pricing.html')
+class Pricing(TemplateView):
+  template_name = 'pricing.html'
