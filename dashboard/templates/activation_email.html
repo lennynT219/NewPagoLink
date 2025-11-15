@@ -1,12 +1,20 @@
-{% autoescape off %}
-Bienvenido a PagoLink.
-
-Para completar tu registro necesitamos que confirmes tu registro haciendo click en el siguiente enlace:
-http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}
-
-Si no puedes hacer clic en el enlace, cópielo y pégalo en la barra de direcciones de tu navegador.
-
-Un fuerte abrazo,
-Equipo de PagoLink.
-
-{% endautoescape %}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <title>Activación de Cuenta</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+  <h2>¡Bienvenido a PagoLink, {{ user.first_name }}!</h2>
+  <p>Gracias por registrarte. Por favor, haz clic en el enlace de abajo para activar tu cuenta:</p>
+  <p style="text-align: center; margin: 25px 0;">
+      <a href="http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}"
+          style="background-color: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px;">
+          Activar mi Cuenta
+      </a>
+  </p>
+  <p>Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
+  <p><code>http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}</code></p>
+  <p>Saludos,<br>El equipo de PagoLink</p>
+  </body>
+</html>
