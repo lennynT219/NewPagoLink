@@ -1,57 +1,65 @@
-from django import forms
 from django.contrib.auth import authenticate
+from django.contrib.auth.forms import AuthenticationForm
+from django.forms import (
+  CharField,
+  EmailField,
+  EmailInput,
+  Form,
+  IntegerField,
+  PasswordInput,
+  TextInput,
+  ValidationError,
+)
 from .models import CustomUser, User
 
 
-class RegisterForm(forms.Form):
-  firstname = forms.CharField(
+class RegisterForm(Form):
+  firstname = CharField(
     label='nombres',
-    widget=forms.TextInput(
+    widget=TextInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Nombres',
       }
     ),
   )
-  lastname = forms.CharField(
+  lastname = CharField(
     label='apellidos',
-    widget=forms.TextInput(
+    widget=TextInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Apellidos',
       }
     ),
   )
-  identification = forms.IntegerField(
+  identification = IntegerField(
     label='Cédula de identidad',
-    widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Cédula', 'type': 'number'}),
+    widget=TextInput(attrs={'class': 'form-control', 'placeholder': 'Cédula', 'type': 'number'}),
   )
-  phone = forms.IntegerField(
+  phone = IntegerField(
     label='Nro de celular',
-    widget=forms.TextInput(
+    widget=TextInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Nro de celular',
       }
     ),
   )
-  email = forms.EmailField(
+  email = EmailField(
     label='Correo electrónico',
-    widget=forms.TextInput(
+    widget=TextInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Correo electrónico',
-        'type': 'email',
       }
     ),
   )
-  password = forms.CharField(
+  password = CharField(
     label='contraseña',
-    widget=forms.TextInput(
+    widget=PasswordInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Contraseña',
-        'type': 'password',
         'id': 'password_register',
       }
     ),
@@ -60,14 +68,14 @@ class RegisterForm(forms.Form):
   def clean_email(self):
     email = self.cleaned_data['email']
     if User.objects.filter(email=email).exists():
-      raise forms.ValidationError('Este correo ya está en uso.')
+      raise ValidationError('Este correo ya está en uso.')
     return email
 
 
-class LoginForm(forms.Form):
-  email = forms.CharField(
+class LoginForms(Form):
+  email = CharField(
     label='Correo electrónico',
-    widget=forms.TextInput(
+    widget=TextInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Correo electrónico',
@@ -75,9 +83,9 @@ class LoginForm(forms.Form):
       }
     ),
   )
-  password = forms.CharField(
+  password = CharField(
     label='Contraseña',
-    widget=forms.PasswordInput(
+    widget=PasswordInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Contraseña',
@@ -92,21 +100,52 @@ class LoginForm(forms.Form):
     password = cleaned_data.get('password')
 
     if not email or not password:
-      raise forms.ValidationError('Ambos campos son obligatorios.')
+      raise ValidationError('Ambos campos son obligatorios.')
 
     user = authenticate(username=email, password=password)
     if not user:
-      raise forms.ValidationError('Correo o contraseña incorrecta.')
+      raise ValidationError('Correo o contraseña incorrecta.')
     if not user.is_active:
-      raise forms.ValidationError('El usuario no está activo, contáctese con soporte.')
+      raise ValidationError('El usuario no está activo, contáctese con soporte.')
 
     # Verifica si el usuario tiene contrato
     try:
       seller = CustomUser.objects.get(user=user)
       redirect_to = 'contract' if not getattr(seller, 'contract', None) else 'dashboard'
     except CustomUser.DoesNotExist:
-      raise forms.ValidationError('El usuario no existe en el sistema.')
+      raise ValidationError('El usuario no existe en el sistema.')
 
     cleaned_data['user'] = user
     cleaned_data['redirect_to'] = redirect_to
     return cleaned_data
+
+
+class LoginForm(AuthenticationForm):
+  username = EmailField(
+    label='Correo electrónico',
+    widget=EmailInput(
+      attrs={
+        'autofocus': True,
+        'class': 'form-control',
+        'placeholder': 'Correo electrónico',
+      }
+    ),
+  )
+  password = CharField(
+    label='Contraseña',
+    strip=False,
+    widget=PasswordInput(
+      attrs={
+        'autocomplete': 'current-password',
+        'class': 'form-control',
+        'placeholder': 'Contraseña',
+      }
+    ),
+  )
+  error_messages = {
+    'invalid_login': ('Correo o contraseña incorrectas. Por favor, intentelo de nuevo.'),
+    'inactive': ('Esta cuenta esta inactiva. Revisa tu correo de activacion.'),
+  }
+
+  def __init__(self, request=None, *args, **kwargs) -> None:
+    super().__init__(request, *args, **kwargs)
