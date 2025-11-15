@@ -9,6 +9,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from .models import CustomUser, Contract
 from .tokens import account_activation_token
+from django.contrib.gis.geoip2 import GeoIP2
 
 
 def create_user(form_data):
@@ -56,27 +57,31 @@ def send_activation_email(user, req):
 def login_redirect_url(user):
   if user.is_staff:
     return reverse_lazy('admin:index')
+
   try:
     seller = user.customuser
+    if hasattr(seller, 'contract'):
+      return reverse_lazy('dashboard:dashboard')
+    else:
+      return reverse_lazy('dashboard:contract')
   except CustomUser.DoesNotExist:
     return reverse_lazy('dashboard:login')
-  try:
-    if seller.contract:
-      return reverse_lazy('dashboard:dashboard')
-  except Contract.DoesNotExist:
-    pass
-  except AttributeError:
-    pass
 
   return reverse_lazy('dashboard:contract')
 
 
-class RedirectIfAuth:
-  # A dónde redirigir si ya está logueado
-  redirect_url = reverse_lazy('dashboard:dashboard')
+def get_client_ip(req):
+  x_forwarded_for = req.META.get('HTTP_X_FORWARDED_FOR')
+  if x_forwarded_for:
+    ip = x_forwarded_for.split(',')[0]
+  else:
+    ip = req.META.get('REMOTE_ADDR')
+  return ip
 
-  def dispatch(self, request, *args, **kwargs):
-    if request.user.is_authenticated:
-      messages.info(request, 'Ya has iniciado sesión.')
-      return redirect(self.redirect_url)  # type:ignore
-    return super().dispatch(request, *args, **kwargs)  # type:ignore
+
+def get_location_from_ip(ip):
+  try:
+    city = GeoIP2().city(ip)['city']
+    return city
+  except Exception:
+    return 'No identificado'

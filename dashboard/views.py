@@ -1,19 +1,21 @@
 from django.contrib import messages
-from django.http import HttpResponseRedirect
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views import View
+from django.views.generic import RedirectView
 from django.views.generic.edit import FormView
-from dashboard import services
+from .mixins import RedirectIfAuthMixin
+from .models import Contract
 from .forms import LoginForm, RegisterForm
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import get_user_model, login, logout
 from .tokens import account_activation_token
-from .services import RedirectIfAuth, login_redirect_url
+from . import services
 
 
-class Register(RedirectIfAuth, FormView):
+class Register(RedirectIfAuthMixin, FormView):
   template_name = 'register.html'
   form_class = RegisterForm
   success_url = reverse_lazy('dashboard:login')
@@ -45,7 +47,7 @@ class ActivateAccount(View):
       return render(req, self.template_name_invalid)
 
 
-class Login(RedirectIfAuth, FormView):
+class Login(RedirectIfAuthMixin, FormView):
   template_name = 'login.html'
   form_class = LoginForm
 
@@ -57,9 +59,40 @@ class Login(RedirectIfAuth, FormView):
   def form_valid(self, form):
     user = form.get_user()
     login(self.request, user)
-    redirect_url = login_redirect_url(user)
+    redirect_url = services.login_redirect_url(user)
     messages.success(self.request, f'¡Bienvenido de nuevo, {user.first_name or user.username}!')
     return redirect(redirect_url)  # type:ignore
+
+
+class ContractAccept(LoginRequiredMixin, View):
+  template_name = 'contract.html'
+  success_url = reverse_lazy('dashboard:index')  # A dónde va después de aceptar
+
+  def get(self, request, *args, **kwargs):
+    if hasattr(request.user.customuser, 'contract'):
+      return redirect(self.success_url)  # type:ignore
+
+    return render(request, self.template_name)
+
+  def post(self, request, *args, **kwargs):
+    if hasattr(request.user.customuser, 'contract'):
+      return redirect(self.success_url)  # type:ignore
+
+    client_ip = services.get_client_ip(request)
+    city = services.get_location_from_ip(client_ip)
+
+    Contract.objects.create(seller=request.user.customuser, ip=client_ip, city=city)  # type:ignore
+
+    return redirect(self.success_url)  # type:ignore
+
+
+class Logout(RedirectView):
+  url = reverse_lazy('dashboard:login')  # type:ignore
+
+  def get(self, req, *args, **kwargs):
+    if req.user.is_authenticated:
+      logout(req)
+    return super().get(req, *args, **kwargs)
 
 
 class ResetPassword(View):

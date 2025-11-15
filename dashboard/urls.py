@@ -11,5 +11,7 @@ urlpatterns = [
     name='activate',
   ),
   path('iniciar-sesion', views.Login.as_view(), name='login'),
+  path('contrato', views.ContractAccept.as_view(), name='contract'),
+  path('logout', views.Logout.as_view(), name='logout'),
   path('restablecer-contrasena', views.ResetPassword.as_view(), name='reset_password'),
 ]

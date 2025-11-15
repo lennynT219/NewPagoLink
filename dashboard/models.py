@@ -15,6 +15,9 @@ class CustomUser(models.Model):
 
 class Contract(models.Model):
   seller = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-  ip = models.TextField()
-  city = models.TextField()
+  ip = models.GenericIPAddressField()
+  city = models.CharField(max_length=255)
   created_at = models.DateTimeField(auto_now_add=True)
+
+  def __str__(self) -> str:
+    return f'Contrato de {self.seller.user.username} aceptado el {self.created_at.strftime("%Y-%m-%d")}'
