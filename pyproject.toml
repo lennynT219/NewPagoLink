@@ -1,3 +1,14 @@
+[project]
+name = "newpagolink"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=5.2.8",
+    "six>=1.17.0",
+]
+
 [tool.ruff]
 line-length = 120
 indent-width = 2
