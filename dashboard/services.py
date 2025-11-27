@@ -60,14 +60,13 @@ def login_redirect_url(user):
 
   try:
     seller = user.customuser
-    if hasattr(seller, 'contract'):
-      return reverse_lazy('dashboard:dashboard')
-    else:
-      return reverse_lazy('dashboard:contract')
   except CustomUser.DoesNotExist:
     return reverse_lazy('dashboard:login')
 
-  return reverse_lazy('dashboard:contract')
+  if hasattr(seller, 'contract'):
+    return reverse_lazy('dashboard:dashboard')
+  else:
+    return reverse_lazy('dashboard:contract')
 
 
 def get_client_ip(req):
@@ -85,3 +84,37 @@ def get_location_from_ip(ip):
     return city
   except Exception:
     return 'No identificado'
+
+
+class DashboardView(View):
+  def get(self, request):
+    if not request.user.is_authenticated:
+      return redirect('login')
+    seller = CustomUser.objects.get(user=request.user)
+
+    try:
+      if seller.contract:
+        links = Link.objects.filter(seller=seller)
+        sales = Payment.objects.filter(seleer=seller, state=True)
+        refunds = Refund.objects.filter(seller=seller)
+        sale = 0
+        refund = 0
+        for r in refunds:
+          refund += r.amount
+
+        for s in sales:
+          sale += s.amount
+        context = {
+          'links': links,
+          'sale': sale,
+          'refund': refund,
+          'active': seller.state,
+          'email_active': seller.email_active,
+        }
+        return render(request, 'dashboard/dashboard.html', context)
+    except:
+      return redirect('contract')
+
+
+def get_dashboard_stats(user):
+  seller = user.customuser

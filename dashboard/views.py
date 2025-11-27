@@ -5,9 +5,9 @@ from django.urls import reverse_lazy
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views import View
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 from django.views.generic.edit import FormView
-from .mixins import RedirectIfAuthMixin
+from .mixins import ContractRequiredMixin, RedirectIfAuthMixin
 from .models import Contract
 from .forms import LoginForm, RegisterForm
 from django.contrib.auth import get_user_model, login, logout
@@ -35,7 +35,7 @@ class ActivateAccount(View):
     try:
       uid = force_str(urlsafe_base64_decode(uidb64))
       user = self.User.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, self.User.DoesNotExist) as e:
+    except (TypeError, ValueError, OverflowError, self.User.DoesNotExist):
       user = None
     if user is not None and account_activation_token.check_token(user, token):
       user.is_active = True
@@ -62,6 +62,13 @@ class Login(RedirectIfAuthMixin, FormView):
     redirect_url = services.login_redirect_url(user)
     messages.success(self.request, f'¡Bienvenido de nuevo, {user.first_name or user.username}!')
     return redirect(redirect_url)  # type:ignore
+
+
+class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
+  template_name = 'dashboard.html'
+
+  def get_context_data(self, **kwargs):
+    return super().get_context_data(**kwargs)
 
 
 class ContractAccept(LoginRequiredMixin, View):
