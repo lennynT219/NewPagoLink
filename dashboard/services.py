@@ -110,6 +110,7 @@ class DashboardView(View):
           'refund': refund,
           'active': seller.state,
           'email_active': seller.email_active,
+                    p
         }
         return render(request, 'dashboard/dashboard.html', context)
     except:
@@ -118,3 +119,4 @@ class DashboardView(View):
 
 def get_dashboard_stats(user):
   seller = user.customuser
+  links_count = ''
