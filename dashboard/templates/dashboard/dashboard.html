@@ -1,0 +1,87 @@
+{% extends 'dashboard/layouts/base.html' %}
+{% load static %}
+
+{% block title %}Inicio - PagoLink{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Panel de Control</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        {% if not email_active %}
+            <div class="alert alert-danger alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+                <h5><i class="icon fas fa-ban"></i> ¡Atención!</h5>
+                Por favor verifica tu correo. Hemos enviado las instrucciones. Revisa SPAM si es necesario.
+            </div>
+        {% elif not active %}
+            <div class="alert alert-warning alert-dismissible">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+                <h5><i class="icon fas fa-exclamation-triangle"></i> En Verificación</h5>
+                Ya puedes crear enlaces de cobro mientras verificamos tus datos.
+            </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="info-box">
+                    <span class="info-box-icon bg-info elevation-1">
+                        <i class="fas fa-link"></i>
+                    </span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Links Generados</span>
+                        <span class="info-box-number">
+                            {{ links_count|default:"0" }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="info-box mb-3">
+                    <span class="info-box-icon bg-success elevation-1">
+                        <i class="fas fa-shopping-cart"></i>
+                    </span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Ventas Totales</span>
+                        <span class="info-box-number">$ {{ total_sales|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="info-box mb-3">
+                    <span class="info-box-icon bg-danger elevation-1">
+                        <i class="fas fa-undo-alt"></i>
+                    </span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Reembolsos</span>
+                        <span class="info-box-number">$ {{ total_refunds|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-outline card-primary">
+            <div class="card-body">
+                <h4>Bienvenido/a, {{ request.user.first_name|default:request.user.username }}</h4>
+                <p class="card-text">
+                    Te invitamos a crear tu link de cobro y comenzar a recibir pagos por internet de manera segura con Datafast.
+                </p>
+                <a href="{% url 'dashboard:link_add' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Crear Nuevo Link
+                </a>
+            </div>
+        </div>
+
+    </div>
+</section>
+{% endblock %}

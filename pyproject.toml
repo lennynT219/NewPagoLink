@@ -15,3 +15,8 @@ indent-width = 2
 
 [tool.ruff.format]
 quote-style = "single"
+
+[dependency-groups]
+dev = [
+    "django-stubs>=5.2.8",
+]

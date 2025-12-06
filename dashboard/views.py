@@ -1,3 +1,4 @@
+from typing import cast
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect
@@ -8,7 +9,7 @@ from django.views import View
 from django.views.generic import RedirectView, TemplateView
 from django.views.generic.edit import FormView
 from .mixins import ContractRequiredMixin, RedirectIfAuthMixin
-from .models import Contract
+from .models import Contract, CustomUser
 from .forms import LoginForm, RegisterForm
 from django.contrib.auth import get_user_model, login, logout
 from .tokens import account_activation_token
@@ -61,14 +62,21 @@ class Login(RedirectIfAuthMixin, FormView):
     login(self.request, user)
     redirect_url = services.login_redirect_url(user)
     messages.success(self.request, f'¡Bienvenido de nuevo, {user.first_name or user.username}!')
-    return redirect(redirect_url)  # type:ignore
+    return redirect(redirect_url)
 
 
 class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
   template_name = 'dashboard.html'
 
   def get_context_data(self, **kwargs):
-    return super().get_context_data(**kwargs)
+    context = super().get_context_data(**kwargs)
+    current_user = cast(CustomUser, self.request.user)
+    stats = services.get_dashboard_stats(current_user)
+
+    if stats:
+      context.update(stats)
+
+    return context
 
 
 class ContractAccept(LoginRequiredMixin, View):

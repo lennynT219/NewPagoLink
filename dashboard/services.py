@@ -1,13 +1,13 @@
+from typing import Any, Dict, Optional
+from django.db.models import Sum
 from django.urls import reverse_lazy
-from django.shortcuts import redirect
 from django.contrib.auth.models import User
-from django.contrib import messages
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-from .models import CustomUser, Contract
+from .models import CustomUser, Contract, Link, Payment, Refund
 from .tokens import account_activation_token
 from django.contrib.gis.geoip2 import GeoIP2
 
@@ -26,7 +26,7 @@ def create_user(form_data):
     is_active=False,
   )
 
-  CustomUser.objects.create(user=user, phone=form_data['phone'], identification=form_data['identification'])  # type: ignore
+  CustomUser.objects.create(user=user, phone=form_data['phone'], identification=form_data['identification'])
 
   return user
 
@@ -86,37 +86,23 @@ def get_location_from_ip(ip):
     return 'No identificado'
 
 
-class DashboardView(View):
-  def get(self, request):
-    if not request.user.is_authenticated:
-      return redirect('login')
-    seller = CustomUser.objects.get(user=request.user)
+def get_dashboard_stats(user: CustomUser) -> Optional[Dict[str, Any]]:
+  try:
+    seller = user
+    links_count = Link.objects.filter(seller=seller).count()
+    sales_agg = Payment.objects.filter(seller=seller, state=True).aggregate(total=Sum('amount'))
+    total_sales = sales_agg['total'] or 0.0
+    refunds_agg = Refund.objects.filter(seller=seller).aggregate(total=Sum('amount'))
+    total_refunds = refunds_agg['total'] or 0.0
 
-    try:
-      if seller.contract:
-        links = Link.objects.filter(seller=seller)
-        sales = Payment.objects.filter(seleer=seller, state=True)
-        refunds = Refund.objects.filter(seller=seller)
-        sale = 0
-        refund = 0
-        for r in refunds:
-          refund += r.amount
+    return {
+      'links_count': links_count,
+      'total_sales': total_sales,
+      'total_refunds': total_refunds,
+      'active': seller.state,
+      'email_active': seller.email_active,
+      'seller_name': seller.user.first_name,
+    }
 
-        for s in sales:
-          sale += s.amount
-        context = {
-          'links': links,
-          'sale': sale,
-          'refund': refund,
-          'active': seller.state,
-          'email_active': seller.email_active,
-                    p
-        }
-        return render(request, 'dashboard/dashboard.html', context)
-    except:
-      return redirect('contract')
-
-
-def get_dashboard_stats(user):
-  seller = user.customuser
-  links_count = ''
+  except CustomUser.DoesNotExist:
+    return None

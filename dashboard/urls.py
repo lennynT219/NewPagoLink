@@ -12,6 +12,7 @@ urlpatterns = [
   ),
   path('iniciar-sesion', views.Login.as_view(), name='login'),
   path('contrato', views.ContractAccept.as_view(), name='contract'),
+  path('', views.Dashboard.as_view(), name='dashboard'),
   path('logout', views.Logout.as_view(), name='logout'),
   path('restablecer-contrasena', views.ResetPassword.as_view(), name='reset_password'),
 ]
