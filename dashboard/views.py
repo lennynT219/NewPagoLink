@@ -80,7 +80,7 @@ class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
 
 
 class ContractAccept(LoginRequiredMixin, View):
-  template_name = 'contract.html'
+  template_name = 'dashboard/contract.html'
   success_url = reverse_lazy('dashboard:index')  # A dónde va después de aceptar
 
   def get(self, request, *args, **kwargs):

@@ -20,6 +20,6 @@ class ContractRequiredMixin(AccessMixin):
       return self.handle_no_permission()
 
     if not hasattr(request.user.customuser, 'contract'):
-      return redirect(reverse_lazy('dashboard:contract-accept'))  # type:ignore
+      return redirect(reverse_lazy('dashboard:contract'))  # type:ignore
 
     return super().dispatch(request, *args, **kwargs)  # type:ignore
