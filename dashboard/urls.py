@@ -1,10 +1,12 @@
 from django.urls import path, re_path
+from accounts.views import ProfileUpdateView
 from . import views
 
 app_name = 'dashboard'
 
 urlpatterns = [
   path('registrarse', views.Register.as_view(), name='register'),
+  path('perfil/', ProfileUpdateView.as_view(), name='user-update'),
   re_path(
     r'^activar/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z\-]+)/$',
     views.ActivateAccount.as_view(),

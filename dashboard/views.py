@@ -17,7 +17,7 @@ from . import services
 
 
 class Register(RedirectIfAuthMixin, FormView):
-  template_name = 'register.html'
+  template_name = 'dashboard/register.html'
   form_class = RegisterForm
   success_url = reverse_lazy('dashboard:login')
 
@@ -28,8 +28,8 @@ class Register(RedirectIfAuthMixin, FormView):
 
 
 class ActivateAccount(View):
-  template_name_success = 'activation_success.html'
-  template_name_invalid = 'activation_invalid.html'
+  template_name_success = 'dashboard/activation_success.html'
+  template_name_invalid = 'dashboard/activation_invalid.html'
   User = get_user_model()
 
   def get(self, req, uidb64, token, *args, **kwargs):
@@ -41,15 +41,20 @@ class ActivateAccount(View):
     if user is not None and account_activation_token.check_token(user, token):
       user.is_active = True
       user.save()
-      login(req, user)
+      
+      # Activamos también el flag en nuestro modelo de negocio
+      if hasattr(user, 'customuser'):
+        user.customuser.email_active = True
+        user.customuser.save()
 
+      login(req, user)
       return render(req, self.template_name_success)
     else:
       return render(req, self.template_name_invalid)
 
 
 class Login(RedirectIfAuthMixin, FormView):
-  template_name = 'login.html'
+  template_name = 'dashboard/login.html'
   form_class = LoginForm
 
   def get_form_kwargs(self):
@@ -66,11 +71,11 @@ class Login(RedirectIfAuthMixin, FormView):
 
 
 class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
-  template_name = 'dashboard.html'
+  template_name = 'dashboard/dashboard.html'
 
   def get_context_data(self, **kwargs):
     context = super().get_context_data(**kwargs)
-    current_user = cast(CustomUser, self.request.user)
+    current_user = cast(CustomUser, self.request.user.customuser) # type: ignore
     stats = services.get_dashboard_stats(current_user)
 
     if stats:
@@ -81,7 +86,7 @@ class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
 
 class ContractAccept(LoginRequiredMixin, View):
   template_name = 'dashboard/contract.html'
-  success_url = reverse_lazy('dashboard:index')  # A dónde va después de aceptar
+  success_url = reverse_lazy('dashboard:dashboard')  # A dónde va después de aceptar
 
   def get(self, request, *args, **kwargs):
     if hasattr(request.user.customuser, 'contract'):
@@ -112,4 +117,4 @@ class Logout(RedirectView):
 
 class ResetPassword(View):
   def get(self, req):
-    return render(req, 'reset_password.html')
+    return render(req, 'dashboard/reset_password.html')

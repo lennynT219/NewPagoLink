@@ -4,17 +4,12 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>PagoLink |
-            {% block title %}Dashboard{% endblock %}
-        </title>
+        <title>PagoLink | {% block title %}Dashboard{% endblock %}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet"
-              href="{% static 'plugins/fontawesome-free/css/all.min.css' %}">
-        <link rel="stylesheet"
-              href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+        <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}">
+        <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
         <link rel="stylesheet" href="{% static 'css/adminlte.min.css' %}">
-        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700"
-              rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
         {% block css %}{% endblock %}
     </head>
     <body class="hold-transition sidebar-mini">
@@ -46,15 +41,16 @@
                 </ul>
             </nav>
             <aside class="main-sidebar sidebar-dark-primary elevation-4">
-                <a href="{% url 'dashboard:index' %}" class="brand-link">
+                <a href="{% url 'dashboard:dashboard' %}" class="brand-link">
                     <img src="{% static 'img/AdminLTELogo.png' %}"
                          alt="PagoLink Logo"
                          class="brand-image img-circle elevation-3"
                          style="opacity: .8">
                     <span class="brand-text font-weight-light"><b>Pago</b>Link</span>
                 </a>
-                {% include 'sidebar.html' %}
+                {% include 'dashboard/sidebar.html' %}
             </aside>
+
             <div class="content-wrapper">
                 {% block content %}{% endblock %}
             </div>

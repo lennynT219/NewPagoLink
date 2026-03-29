@@ -14,9 +14,6 @@ class Link(models.Model):
   is_payment = models.BooleanField(default=False)  # type: ignore
   created_at = models.DateTimeField(auto_now_add=True)
 
-  class Meta:
-    db_table = 'dashboard_link'
-
   def __str__(self) -> str:
     return self.description or f'Link #{self.pk}'  # type: ignore
 
@@ -47,9 +44,6 @@ class Payment(models.Model):
   status = models.CharField(max_length=10, choices=PaymentStatus.choices, default=PaymentStatus.PENDING)
   state = models.BooleanField(default=False)  # type: ignore
 
-  class Meta:
-    db_table = 'dashboard_payment'
-
   def __str__(self):
     return f'{self.first_name}{self.last_name} - {self.amount}'
 
@@ -62,9 +56,6 @@ class Refund(models.Model):
   state = models.BooleanField(default=False)  # type: ignore
   ticket = models.CharField(max_length=255, null=True, blank=True)
   created_at = models.DateTimeField(auto_now_add=True)
-
-  class Meta:
-    db_table = 'dashboard_refund'
 
   def __str__(self):
     return f'Resembolso #{self.pk} - {self.amount}'  # type: ignore

@@ -22,8 +22,5 @@ class Contract(models.Model):
   city = models.CharField(max_length=255)
   created_at = models.DateTimeField(auto_now_add=True)
 
-  class Meta:
-    db_table = 'dashboard_contract'
-
   def __str__(self) -> str:
     return f'Contrato de {self.seller.user.username} aceptado el {self.created_at.strftime("%Y-%m-%d")}'  # type: ignore

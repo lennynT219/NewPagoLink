@@ -30,7 +30,7 @@ def send_activation_email(user: User, req: Any) -> None:
   current_site = get_current_site(req)
   mail_subject = 'Active su cuenta de PagoLink'
   message = render_to_string(
-    'activation_email.html',
+    'dashboard/activation_email.html',
     {
       'user': user,
       'domain': current_site.domain,
