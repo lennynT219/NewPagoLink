@@ -1,0 +1,97 @@
+{% extends 'dashboard/layouts/base.html' %}
+
+{% block title %}Detalle de Venta - PagoLink{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Resumen de Transacción</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="{% url 'payments:payment_history' %}">Ventas</a></li>
+                    <li class="breadcrumb-item active">Detalle</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card card-outline {% if payment.state %}card-success{% else %}card-danger{% endif %}">
+                    <div class="card-header">
+                        <h3 class="card-title">Información del Pago</h3>
+                        <div class="card-tools">
+                            {% if payment.state %}
+                                <span class="badge badge-success">PAGADO</span>
+                            {% else %}
+                                <span class="badge badge-danger">PENDIENTE / FALLIDO</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Concepto:</th>
+                                <td>{{ payment.description }}</td>
+                            </tr>
+                            <tr>
+                                <th>Monto Total:</th>
+                                <td class="text-success text-bold">${{ payment.amount }}</td>
+                            </tr>
+                            <tr>
+                                <th>ID Transacción (Datafast):</th>
+                                <td><code>{{ payment.transaction_id|default:"N/A" }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Fecha de Registro:</th>
+                                <td>{{ payment.link.created_at|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Datos del Cliente</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Nombre:</th>
+                                <td>{{ payment.first_name }} {{ payment.last_name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td>{{ payment.email }}</td>
+                            </tr>
+                            <tr>
+                                <th>Identificación:</th>
+                                <td>{{ payment.identify }}</td>
+                            </tr>
+                            <tr>
+                                <th>Teléfono:</th>
+                                <td>{{ payment.phone }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="card-footer text-right">
+                        {% if payment.state and not payment.refund %}
+                            <a href="{% url 'payments:refund_request' payment_id=payment.id %}" class="btn btn-danger btn-sm">
+                                <i class="fas fa-undo mr-1"></i> Solicitar Reembolso
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

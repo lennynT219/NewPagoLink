@@ -25,11 +25,14 @@ def create_user(form_data: Dict[str, Any]) -> User:
   return user
 
 
+from django.core.mail import EmailMultiAlternatives
+from django.utils.html import strip_tags
+
 def send_activation_email(user: User, req: Any) -> None:
-  """Construye y envía un email de activación."""
+  """Construye y envía un email de activación en formato HTML."""
   current_site = get_current_site(req)
   mail_subject = 'Active su cuenta de PagoLink'
-  message = render_to_string(
+  html_content = render_to_string(
     'dashboard/activation_email.html',
     {
       'user': user,
@@ -38,7 +41,16 @@ def send_activation_email(user: User, req: Any) -> None:
       'token': account_activation_token.make_token(user),
     },
   )
-  email = EmailMessage(mail_subject, message, 'PagoLink <pagoslinkexpress@gmail.com>', to=[user.email])
+  text_content = strip_tags(html_content) # Versión en texto plano para clientes que no soportan HTML
+  
+  email = EmailMultiAlternatives(
+    mail_subject, 
+    text_content, 
+    'PagoLink <pagoslinkexpress@gmail.com>', 
+    [user.email]
+  )
+  email.attach_alternative(html_content, "text/html")
+  
   try:
     email.send()
   except Exception as e:

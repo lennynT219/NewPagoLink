@@ -5,8 +5,10 @@ app_name = 'payments'
 
 urlpatterns = [
     path('links/', views.LinkListView.as_view(), name='link_list'),
+    path('links/<int:pk>/', views.LinkDetailView.as_view(), name='link_detail'),
     path('links/add/', views.LinkCreateView.as_view(), name='link_create'),
     path('history/', views.PaymentListView.as_view(), name='payment_history'),
+    path('history/<int:pk>/', views.PaymentDetailView.as_view(), name='payment_detail'),
     path('history/export/csv/', views.PaymentExportCSVView.as_view(), name='export_csv'),
     path('history/export/excel/', views.PaymentExportExcelView.as_view(), name='export_excel'),
     # Reembolsos

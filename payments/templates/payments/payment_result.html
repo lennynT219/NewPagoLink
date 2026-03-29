@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado del Pago - PagoLink</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; }
+        .result-container { max-width: 500px; margin: 80px auto; }
+        .result-card { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
+        .icon-success { color: #28a745; font-size: 60px; margin-bottom: 20px; }
+        .icon-error { color: #dc3545; font-size: 60px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="result-container">
+    <div class="result-card">
+        {% if success %}
+            <i class="fas fa-check-circle icon-success"></i>
+            <h2 class="text-success">¡Pago Exitoso!</h2>
+            <p class="lead">Gracias por tu compra. Tu pago ha sido procesado correctamente.</p>
+            <div class="alert alert-light border text-left mt-4">
+                <p class="mb-1 small text-muted">Resumen:</p>
+                <strong>Concepto:</strong> {{ payment.description }}<br>
+                <strong>Monto:</strong> ${{ payment.amount }}<br>
+                <strong>ID Transacción:</strong> <small>{{ payment.transaction_id }}</small>
+            </div>
+        {% else %}
+            <i class="fas fa-times-circle icon-error"></i>
+            <h2 class="text-danger">Pago Fallido</h2>
+            <p class="lead">Lo sentimos, no pudimos procesar tu pago en este momento.</p>
+            <div class="alert alert-danger mt-4">
+                <strong>Motivo:</strong> {{ error_msg|default:"La transacción fue declinada por la entidad financiera." }}
+            </div>
+            <p class="text-muted small">Por favor, verifica los datos de tu tarjeta e intenta nuevamente.</p>
+        {% endif %}
+
+        <hr class="my-4">
+        <p class="text-muted small">Este es un comprobante digital generado por PagoLink.</p>
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm mr-2">
+            <i class="fas fa-print"></i> Imprimir
+        </button>
+    </div>
+    
+    <div class="text-center mt-4">
+        <p class="text-muted small">&copy; 2026 PagoLink Ecuador.</p>
+    </div>
+</div>
+
+</body>
+</html>

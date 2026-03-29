@@ -63,7 +63,7 @@
                                     <td>{{ payment.link.created_at|date:"d/m/Y H:i" }}</td>
                                     <td>{{ payment.first_name }} {{ payment.last_name }}</td>
                                     <td>{{ payment.email }}</td>
-                                    <td><strong>${{ payment.amount }}</strong></td>
+                                    <td><strong>${{ payment.amount|floatformat:2 }}</strong></td>
                                     <td>
                                         {% if payment.state %}
                                         <span class="badge bg-success">Pagado</span>
@@ -73,9 +73,9 @@
                                     </td>
                                     <td><small class="text-muted">{{ payment.transaction_id|default:"---" }}</small></td>
                                     <td>
-                                        <button class="btn btn-default btn-xs" title="Detalle completo">
+                                        <a href="{% url 'payments:payment_detail' pk=payment.id %}" class="btn btn-default btn-xs" title="Detalle completo">
                                             <i class="fas fa-info-circle"></i>
-                                        </button>
+                                        </a>
                                     </td>
                                 </tr>
                                 {% empty %}

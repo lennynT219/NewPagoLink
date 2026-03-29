@@ -10,6 +10,9 @@
         body { background-color: #f4f6f9; }
         .checkout-container { max-width: 600px; margin: 50px auto; }
         .payment-summary { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        /* Estilos para el widget de Datafast */
+        .wpwl-form-card { background: #ffffff !important; border: none !important; box-shadow: none !important; }
+        .wpwl-button-pay { background-color: #007bff !important; border-color: #007bff !important; width: 100% !important; }
     </style>
 </head>
 <body>
@@ -70,15 +73,32 @@
         </form>
     </div>
     {% elif step == 'payment' %}
-    <div class="payment-summary text-center">
-        <h4 class="mb-4">Ingresa los datos de tu tarjeta</h4>
+    <div class="payment-summary">
+        <h4 class="mb-4 text-center">Ingresa los datos de tu tarjeta</h4>
         
+        <!-- Opciones de Configuración del Widget (Mandatorio Datafast) -->
+        <script>
+            var wpwlOptions = {
+                style: "card",
+                locale: "es",
+                labels: {
+                    cvv: "CVV", 
+                    cardHolder: "Nombre (Igual que en la tarjeta)"
+                },
+                onReady: function() {
+                    // Imagen de certificación requerida por Datafast
+                    var datafastImg = '<br/><br/><img src="https://www.datafast.com.ec/images/verified.png" style="display:block;margin:0 auto; width:100%;">';
+                    $('form.wpwl-form-card').find('.wpwl-button').before(datafastImg);
+                }
+            }
+        </script>
+
         <!-- Script de Datafast para el widget de pagos -->
-        <script src="https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId={{ checkout_id }}"></script>
+        <script src="{{ DATAFAST_BASE_URL }}paymentWidgets.js?checkoutId={{ checkout_id }}"></script>
         
-        <form action="{{ request.scheme }}://{{ request.get_host }}{% url 'payments:payment_result' %}?payment_id={{ payment.id }}" class="paymentWidgets" data-brands="VISA MASTER AMEX DINERS"></form>
+        <form action="{{ request.scheme }}://{{ request.get_host }}{% url 'payments:payment_result' %}?payment_id={{ payment.id }}" class="paymentWidgets" data-brands="VISA MASTER AMEX DINERS DISCOVER"></form>
         
-        <div class="mt-4 p-3 bg-light rounded">
+        <div class="mt-4 p-3 bg-light rounded text-center">
             <p class="small text-muted mb-0">
                 <i class="fas fa-lock text-success mr-2"></i> 
                 Sus datos están protegidos por encriptación SSL de grado bancario.
@@ -91,6 +111,9 @@
         <p class="text-muted small">&copy; 2026 PagoLink Ecuador. Todos los derechos reservados.</p>
     </div>
 </div>
+
+<!-- Script de Validaciones Adicionales Datafast (Requerido) -->
+<script type="text/javascript" src="https://www.datafast.com.ec/js/dfAdditionalValidations1.js"></script>
 
 </body>
 </html>

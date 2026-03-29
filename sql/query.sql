@@ -7,3 +7,5 @@ FROM
 DELETE FROM auth_user
 WHERE
   id = 6;
+
+mvvt nodu gokc vjzi

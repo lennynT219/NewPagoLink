@@ -8,6 +8,10 @@ from django.db.models import Sum
 from decimal import Decimal
 from django.db import transaction
 from django.http import HttpResponse
+from django.conf import settings
+from django.template.loader import render_to_string
+from django.core.mail import EmailMultiAlternatives
+from django.utils.html import strip_tags
 from payments.models import Link, Payment, Refund
 from accounts.models import CustomUser
 
@@ -16,6 +20,34 @@ def calculate_tax(amount: Decimal, include_tax: bool) -> Decimal:
   if not include_tax:
     return (amount * Decimal('0.12')).quantize(Decimal('0.01'))
   return Decimal('0.00')
+
+def send_payment_invite(payment: Payment, req: Any) -> None:
+  """Envía un correo al cliente invitándolo a pagar el link generado."""
+  if not payment.email: return
+  
+  subject = f"Invitación de pago de {payment.seller.user.get_full_name()}"
+  context = {
+    'payment': payment,
+    'pay_url': f"{req.scheme}://{req.get_host()}/payments/pay/{payment.link.id}/"
+  }
+  html_content = render_to_string('payments/emails/invite_email.html', context)
+  text_content = strip_tags(html_content)
+  
+  email = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [payment.email])
+  email.attach_alternative(html_content, "text/html")
+  email.send()
+
+def send_payment_confirmation(payment: Payment) -> None:
+  """Envía el comprobante de pago exitoso al cliente."""
+  if not payment.email: return
+  
+  subject = f"Comprobante de Pago Exitoso - {payment.description}"
+  html_content = render_to_string('payments/emails/confirmation_email.html', {'payment': payment})
+  text_content = strip_tags(html_content)
+  
+  email = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [payment.email])
+  email.attach_alternative(html_content, "text/html")
+  email.send()
 
 @transaction.atomic
 def create_payment_link(seller: CustomUser, data: Dict[str, Any]) -> Link:
@@ -54,6 +86,12 @@ def process_payment_result(payment_id: int, result_data: Dict[str, Any]) -> Paym
     if payment.link and payment.link.unique:
       payment.link.active = False
       payment.link.save()
+    
+    # Notificar al cliente
+    try:
+      send_payment_confirmation(payment)
+    except Exception as e:
+      print(f"Error enviando confirmación: {e}")
   else:
     payment.status = Payment.PaymentStatus.FAILED
     payment.state = False
@@ -100,27 +138,15 @@ def generate_payments_excel(seller: CustomUser) -> io.BytesIO:
 
 @transaction.atomic
 def request_refund(seller: CustomUser, payment: Payment, description: str) -> Refund:
-  """
-  Crea una solicitud de reembolso para un pago específico.
-  """
-  # Validaciones de seguridad
-  if payment.seller != seller:
-    raise ValueError("No tiene permisos sobre este pago.")
-  if payment.status != Payment.PaymentStatus.PAID:
-    raise ValueError("Solo se pueden reembolsar pagos confirmados.")
-  if hasattr(payment, 'refund'):
-    raise ValueError("Este pago ya tiene una solicitud de reembolso.")
+  """Crea una solicitud de reembolso para un pago específico."""
+  if payment.seller != seller: raise ValueError("No tiene permisos sobre este pago.")
+  if payment.status != Payment.PaymentStatus.PAID: raise ValueError("Solo se pueden reembolsar pagos confirmados.")
+  if hasattr(payment, 'refund'): raise ValueError("Este pago ya tiene una solicitud de reembolso.")
 
-  refund = Refund.objects.create(
-    seller=seller,
-    payment=payment,
-    description=description,
-    amount=payment.amount,
-    state=False # Pendiente de aprobación
+  return Refund.objects.create(
+    seller=seller, payment=payment, description=description,
+    amount=payment.amount, state=False
   )
-  
-  # Opcional: Podríamos marcar el pago con un estado intermedio
-  return refund
 
 def get_seller_stats(seller: CustomUser) -> Dict[str, Any]:
   """Estadísticas del Dashboard."""

@@ -1,0 +1,106 @@
+{% extends 'dashboard/layouts/base.html' %}
+
+{% block title %}Detalle de Link - PagoLink{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Detalle de Link de Pago</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="{% url 'payments:link_list' %}">Links</a></li>
+                    <li class="breadcrumb-item active">Detalle</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Configuración del Link</h3>
+                    </div>
+                    <div class="card-body">
+                        <strong><i class="fas fa-file-alt mr-1"></i> Descripción</strong>
+                        <p class="text-muted">{{ link.description }}</p>
+                        <hr>
+                        <strong><i class="fas fa-dollar-sign mr-1"></i> Monto Total</strong>
+                        <p class="text-muted h4 text-success">${{ link.amount }}</p>
+                        <hr>
+                        <strong><i class="fas fa-info-circle mr-1"></i> Atributos</strong>
+                        <p class="text-muted">
+                            Tipo: {% if link.unique %}<span class="badge bg-warning">Único</span>{% else %}<span class="badge bg-info">Múltiple</span>{% endif %}<br>
+                            Estado: {% if link.active %}<span class="badge bg-success">Activo</span>{% else %}<span class="badge bg-danger">Inactivo</span>{% endif %}
+                        </p>
+                        <hr>
+                        <button class="btn btn-primary btn-block" onclick="copyToClipboard('{{ request.scheme }}://{{ request.get_host }}{% url 'payments:link_checkout' pk=link.pk %}')">
+                            <i class="fas fa-copy mr-1"></i> Copiar Link de Pago
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="card card-outline card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">Intentos de Pago / Transacciones</h3>
+                    </div>
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>Estado</th>
+                                    <th>Monto</th>
+                                    <th>ID Transacción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>{{ payment.created_at|date:"d/m/Y H:i"|default:link.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ payment.first_name }} {{ payment.last_name }}</td>
+                                    <td>
+                                        {% if payment.state %}
+                                        <span class="badge bg-success">Pagado</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Fallido/Pendiente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ payment.amount }}</td>
+                                    <td><small>{{ payment.transaction_id|default:"---" }}</small></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">Aún no hay transacciones para este link.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+function copyToClipboard(text) {
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    alert('Link de pago copiado: ' + text);
+}
+</script>
+{% endblock %}

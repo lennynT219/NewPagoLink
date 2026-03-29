@@ -6,6 +6,7 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.db.models import Sum
 from django.http import HttpResponse
+from django.conf import settings
 from .models import Link, Payment, Refund
 from .forms import LinkForm
 from . import services
@@ -18,7 +19,11 @@ class LinkCheckoutView(View):
 
   def get(self, request, pk, *args, **kwargs):
     link = get_object_or_404(Link, pk=pk, active=True)
-    return render(request, self.template_name, {'link': link, 'seller': link.seller})
+    return render(request, self.template_name, {
+      'link': link, 
+      'seller': link.seller,
+      'DATAFAST_BASE_URL': settings.DATAFAST_BASE_URL
+    })
 
   def post(self, request, pk, *args, **kwargs):
     link = get_object_or_404(Link, pk=pk, active=True)
@@ -35,9 +40,26 @@ class LinkCheckoutView(View):
       **customer_data
     )
     gateway = DatafastClient()
-    checkout_id = gateway.prepare_checkout(link.amount, 'USD', f"PAY-{payment.id}", customer_data)
+    from accounts.services import get_client_ip
+    client_ip = get_client_ip(request)
+
+    checkout_id = gateway.prepare_checkout(
+      amount=link.amount,
+      subtotal=link.subtotal,
+      igv=link.igv,
+      include_igv=link.include_igv,
+      transaction_id=f"PAY-{payment.id}",
+      customer_data=customer_data,
+      client_ip=client_ip
+    )
     if checkout_id:
-      return render(request, self.template_name, {'link': link, 'checkout_id': checkout_id, 'payment': payment, 'step': 'payment'})
+      return render(request, self.template_name, {
+        'link': link, 
+        'checkout_id': checkout_id, 
+        'payment': payment, 
+        'step': 'payment',
+        'DATAFAST_BASE_URL': settings.DATAFAST_BASE_URL
+      })
     messages.error(request, "Error de conexión con la pasarela.")
     return redirect('payments:link_checkout', pk=pk)
 
@@ -51,7 +73,18 @@ class PaymentResultView(View):
     gateway = DatafastClient()
     result_data = gateway.get_payment_status(resource_path)
     payment = services.process_payment_result(int(payment_id), result_data)
-    return render(request, self.template_name, {'payment': payment, 'success': payment.state, 'error_msg': result_data.get('result', {}).get('description')})
+    return render(request, self.template_name, {
+      'payment': payment, 
+      'success': payment.state, 
+      'error_msg': result_data.get('result', {}).get('description')
+    })
+
+class PaymentDetailView(LoginRequiredMixin, ContractRequiredMixin, View):
+  """Vista para ver el detalle de una transacción específica."""
+  template_name = 'payments/payment_detail.html'
+  def get(self, request, pk):
+    payment = get_object_or_404(Payment, id=pk, seller=request.user.customuser)
+    return render(request, self.template_name, {'payment': payment})
 
 class PaymentListView(LoginRequiredMixin, ContractRequiredMixin, ListView):
   """Historial de transacciones."""
@@ -114,6 +147,20 @@ class RefundRequestView(LoginRequiredMixin, ContractRequiredMixin, View):
       messages.error(request, str(e))
       return render(request, self.template_name, {'payment': payment})
 
+class LinkDetailView(LoginRequiredMixin, ContractRequiredMixin, ListView):
+  """Vista para ver el detalle de un link y sus pagos asociados."""
+  model = Payment
+  template_name = 'payments/link_detail.html'
+  context_object_name = 'payments'
+
+  def get_queryset(self):
+    self.link = get_object_or_404(Link, pk=self.kwargs['pk'], seller=self.request.user.customuser)
+    return Payment.objects.filter(link=self.link).order_by('-id')
+
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    context['link'] = self.link
+    return context
 
 class LinkListView(LoginRequiredMixin, ContractRequiredMixin, ListView):
   model = Link
@@ -127,7 +174,25 @@ class LinkCreateView(LoginRequiredMixin, ContractRequiredMixin, CreateView):
   form_class = LinkForm
   template_name = 'payments/link_form.html'
   success_url = reverse_lazy('payments:link_list')
+
   def form_valid(self, form):
-    services.create_payment_link(self.request.user.customuser, form.cleaned_data)
-    messages.success(self.request, "¡Link creado exitosamente!")
-    return super().form_valid(form)
+    link = services.create_payment_link(self.request.user.customuser, form.cleaned_data)
+    
+    # Si se proporcionaron datos del cliente, creamos un registro de pago y enviamos invitación
+    if form.cleaned_data.get('email'):
+      payment = Payment.objects.create(
+        link=link, seller=self.request.user.customuser, description=link.description,
+        subtotal=link.subtotal, igv=link.igv, amount=link.amount, amount_client=link.amount,
+        first_name=form.cleaned_data.get('firstname', ''),
+        last_name=form.cleaned_data.get('lastname', ''),
+        email=form.cleaned_data.get('email', ''),
+        phone=form.cleaned_data.get('phone', ''),
+        identify=form.cleaned_data.get('identity', '')
+      )
+      try:
+        services.send_payment_invite(payment, self.request)
+      except Exception as e:
+        print(f"Error enviando invitación: {e}")
+
+    messages.success(self.request, "¡Link creado exitosamente! Se ha enviado una invitación al cliente.")
+    return redirect(self.success_url)
