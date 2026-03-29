@@ -1,0 +1,106 @@
+{% extends 'dashboard/layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Generar Link de Pago</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Información del cobro</h3>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <div class="form-group">
+                                <label for="{{ form.description.id_for_label }}">Descripción del producto/servicio</label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                    <small class="text-danger">{{ form.description.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.subtotal.id_for_label }}">Subtotal (USD)</label>
+                                        {{ form.subtotal }}
+                                        {% if form.subtotal.errors %}
+                                            <small class="text-danger">{{ form.subtotal.errors.0 }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-center mt-3">
+                                    <div class="custom-control custom-checkbox">
+                                        {{ form.include_igv }}
+                                        <label class="custom-control-label" for="{{ form.include_igv.id_for_label }}">
+                                            El subtotal ya incluye IVA
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mt-3">
+                                <div class="custom-control custom-switch">
+                                    {{ form.unique }}
+                                    <label class="custom-control-label" for="{{ form.unique.id_for_label }}">
+                                        Link de un solo uso (Se desactiva tras el primer pago exitoso)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <hr>
+                            <h5>Datos del Cliente (Opcional)</h5>
+                            <p class="text-muted small">Si completas estos datos, el sistema podrá enviar una invitación personalizada.</p>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        {{ form.firstname.label_tag }}
+                                        <input type="text" name="firstname" class="form-control" placeholder="Nombre">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        {{ form.lastname.label_tag }}
+                                        <input type="text" name="lastname" class="form-control" placeholder="Apellido">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                {{ form.email.label_tag }}
+                                <input type="email" name="email" class="form-control" placeholder="correo@ejemplo.com">
+                            </div>
+                        </div>
+
+                        <div class="card-footer text-right">
+                            <a href="{% url 'payments:link_list' %}" class="btn btn-default">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">Generar Link</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
