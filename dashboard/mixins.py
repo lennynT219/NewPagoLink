@@ -1,25 +1,25 @@
-from django.contrib import messages
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.shortcuts import redirect
-from django.contrib.auth.mixins import AccessMixin
-from django.urls import reverse_lazy
 
+class ContractRequiredMixin(UserPassesTestMixin):
+  """Asegura que el usuario tenga un contrato aceptado."""
+  def test_func(self):
+    return hasattr(self.request.user.customuser, 'contract') # type: ignore
+
+  def handle_no_permission(self):
+    return redirect('dashboard:contract')
 
 class RedirectIfAuthMixin:
-  redirect_url = reverse_lazy('dashboard:dashboard')
-
+  """Redirige al dashboard si el usuario ya está autenticado."""
   def dispatch(self, request, *args, **kwargs):
     if request.user.is_authenticated:
-      messages.info(request, 'Ya has iniciado sesión.')
-      return redirect(self.redirect_url)  # type:ignore
-    return super().dispatch(request, *args, **kwargs)  # type:ignore
+      return redirect('dashboard:dashboard')
+    return super().dispatch(request, *args, **kwargs) # type: ignore
 
+class AdminRequiredMixin(UserPassesTestMixin):
+  """Mixin para restringir el acceso únicamente a usuarios del Staff (Administradores)."""
+  def test_func(self):
+    return self.request.user.is_active and self.request.user.is_staff
 
-class ContractRequiredMixin(AccessMixin):
-  def dispatch(self, request, *args, **kwargs):
-    if not request.user.is_authenticated:
-      return self.handle_no_permission()
-
-    if not hasattr(request.user.customuser, 'contract'):
-      return redirect(reverse_lazy('dashboard:contract'))  # type:ignore
-
-    return super().dispatch(request, *args, **kwargs)  # type:ignore
+  def handle_no_permission(self):
+    return redirect('dashboard:dashboard')

@@ -53,9 +53,13 @@ class Refund(models.Model):
   payment = models.OneToOneField(Payment, on_delete=models.CASCADE, related_name='refund')
   description = models.TextField()
   amount = models.DecimalField(max_digits=10, decimal_places=2)
-  state = models.BooleanField(default=False)  # type: ignore
+  state = models.BooleanField(default=False)  # False = Pendiente, True = Aprobado
   ticket = models.CharField(max_length=255, null=True, blank=True)
   created_at = models.DateTimeField(auto_now_add=True)
+  
+  # Campos de Auditoría Administrativa
+  processed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_refunds')
+  processed_at = models.DateTimeField(null=True, blank=True)
 
   def __str__(self):
     return f'Resembolso #{self.pk} - {self.amount}'  # type: ignore

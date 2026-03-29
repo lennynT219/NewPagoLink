@@ -14,6 +14,8 @@ urlpatterns = [
     # Reembolsos
     path('refunds/', views.RefundListView.as_view(), name='refund_list'),
     path('refunds/request/<int:payment_id>/', views.RefundRequestView.as_view(), name='refund_request'),
+    path('admin/refunds/', views.AdminRefundListView.as_view(), name='admin_refund_list'),
+    path('admin/refunds/approve/<int:pk>/', views.AdminRefundApproveView.as_view(), name='admin_refund_approve'),
     # Ruta pública de Checkout
     path('pay/<int:pk>/', views.LinkCheckoutView.as_view(), name='link_checkout'),
     path('pay/result/', views.PaymentResultView.as_view(), name='payment_result'),

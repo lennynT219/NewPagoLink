@@ -148,6 +148,34 @@ def request_refund(seller: CustomUser, payment: Payment, description: str) -> Re
     amount=payment.amount, state=False
   )
 
+from django.utils import timezone
+
+@transaction.atomic
+def approve_refund_logic(refund_id: int, admin_user: Any) -> Refund:
+  """
+  Lógica de negocio para aprobar un reembolso.
+  1. Marca el Refund como aprobado.
+  2. Actualiza el Payment relacionado a un estado de 'Reembolsado' (via state=False o status).
+  3. Registra auditoría (quién y cuándo).
+  """
+  refund = Refund.objects.select_for_update().get(id=refund_id)
+  if refund.state:
+    raise ValueError("Este reembolso ya ha sido procesado anteriormente.")
+
+  # Actualizar Reembolso
+  refund.state = True
+  refund.processed_by = admin_user
+  refund.processed_at = timezone.now()
+  refund.save()
+
+  # Actualizar Pago relacionado
+  payment = refund.payment
+  payment.status = Payment.PaymentStatus.FAILED # O añadir un estado 'REFUNDED' si se desea
+  payment.state = False # Ya no cuenta como venta activa para KPIs
+  payment.save()
+
+  return refund
+
 def get_seller_stats(seller: CustomUser) -> Dict[str, Any]:
   """Estadísticas del Dashboard."""
   links_count = Link.objects.filter(seller=seller).count()

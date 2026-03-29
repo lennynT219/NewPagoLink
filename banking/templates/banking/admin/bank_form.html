@@ -1,0 +1,43 @@
+{% extends 'dashboard/layouts/base.html' %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0 text-dark">Registrar Nuevo Banco</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card card-success">
+                    <div class="card-header">
+                        <h3 class="card-title">Información de la Entidad</h3>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Nombre del Banco</label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                    <small class="text-danger">{{ form.title.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-footer text-right">
+                            <a href="{% url 'banking:bank_list' %}" class="btn btn-default">Cancelar</a>
+                            <button type="submit" class="btn btn-success">Guardar Banco</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

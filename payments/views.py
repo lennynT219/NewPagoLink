@@ -13,6 +13,26 @@ from . import services
 from gateways.services import DatafastClient
 from dashboard.mixins import ContractRequiredMixin
 
+from dashboard.mixins import ContractRequiredMixin, AdminRequiredMixin
+
+class AdminRefundListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
+  """Vista administrativa para que el staff vea solicitudes de reembolso pendientes."""
+  model = Refund
+  template_name = 'payments/admin/refund_list.html'
+  context_object_name = 'refunds'
+  def get_queryset(self):
+    return Refund.objects.filter(state=False).order_by('created_at')
+
+class AdminRefundApproveView(LoginRequiredMixin, AdminRequiredMixin, View):
+  """Vista para procesar la aprobación de un reembolso."""
+  def post(self, request, pk):
+    try:
+      services.approve_refund_logic(pk, request.user)
+      messages.success(request, "El reembolso ha sido aprobado y procesado exitosamente.")
+    except Exception as e:
+      messages.error(request, f"Error al procesar el reembolso: {str(e)}")
+    return redirect('payments:admin_refund_list')
+
 class LinkCheckoutView(View):
   """Vista pública de Checkout."""
   template_name = 'payments/checkout.html'

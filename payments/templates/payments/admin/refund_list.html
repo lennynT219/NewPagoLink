@@ -1,0 +1,64 @@
+{% extends 'dashboard/layouts/base.html' %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0 text-dark">Panel de Reembolsos</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-warning card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title text-bold">Solicitudes Pendientes de Aprobación</h3>
+                    </div>
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Vendedor</th>
+                                    <th>Monto</th>
+                                    <th>Motivo</th>
+                                    <th>ID Transacción</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for refund in refunds %}
+                                <tr>
+                                    <td>{{ refund.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ refund.seller.user.get_full_name }}</td>
+                                    <td><strong class="text-danger">${{ refund.amount }}</strong></td>
+                                    <td>{{ refund.description|truncatechars:50 }}</td>
+                                    <td><small>{{ refund.payment.transaction_id }}</small></td>
+                                    <td>
+                                        <form method="post" action="{% url 'payments:admin_refund_approve' pk=refund.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-xs" onclick="return confirm('¿Está seguro de aprobar este reembolso real en Datafast?')">
+                                                <i class="fas fa-check"></i> Aprobar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">No hay reembolsos pendientes.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
