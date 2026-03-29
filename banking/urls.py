@@ -1,7 +1,8 @@
-from . import services
+from django.urls import path
+from . import views
 
 app_name = 'banking'
 
 urlpatterns = [
-    # Aquí irán las rutas de Catálogo de Bancos y Métodos de Pago
+    path('config/', views.PaymentMethodView.as_view(), name='config'),
 ]
