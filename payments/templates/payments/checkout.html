@@ -76,7 +76,7 @@
         <!-- Script de Datafast para el widget de pagos -->
         <script src="https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId={{ checkout_id }}"></script>
         
-        <form action="{% url 'payments:link_list' %}" class="paymentWidgets" data-brands="VISA MASTER AMEX DINERS"></form>
+        <form action="{{ request.scheme }}://{{ request.get_host }}{% url 'payments:payment_result' %}?payment_id={{ payment.id }}" class="paymentWidgets" data-brands="VISA MASTER AMEX DINERS"></form>
         
         <div class="mt-4 p-3 bg-light rounded">
             <p class="small text-muted mb-0">

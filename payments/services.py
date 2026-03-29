@@ -44,6 +44,34 @@ def create_payment_link(seller: CustomUser, data: Dict[str, Any]) -> Link:
   
   return link
 
+@transaction.atomic
+def process_payment_result(payment_id: int, result_data: Dict[str, Any]) -> Payment:
+  """
+  Procesa el resultado de la pasarela, actualiza el estado del pago
+  y gestiona la desactivación de links únicos.
+  """
+  payment = Payment.objects.select_for_update().get(id=payment_id)
+  result_code = result_data.get('result', {}).get('code', '')
+  
+  # Códigos de éxito de Datafast/Oppwa
+  SUCCESS_CODES = ['000.000.000', '000.100.110', '000.100.112', '000.400.010', '000.400.020']
+  
+  if any(code in result_code for code in SUCCESS_CODES):
+    payment.status = Payment.PaymentStatus.PAID
+    payment.state = True
+    payment.transaction_id = result_data.get('id')
+    
+    # Lógica de Links Únicos: Desactivar si el pago fue exitoso
+    if payment.link and payment.link.unique:
+      payment.link.active = False
+      payment.link.save()
+  else:
+    payment.status = Payment.PaymentStatus.FAILED
+    payment.state = False
+  
+  payment.save()
+  return payment
+
 def get_seller_stats(seller: CustomUser) -> Dict[str, Any]:
   """Calcula las estadísticas financieras de un vendedor."""
   links_count = Link.objects.filter(seller=seller).count()

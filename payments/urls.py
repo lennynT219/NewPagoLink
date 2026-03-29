@@ -8,4 +8,5 @@ urlpatterns = [
     path('links/add/', views.LinkCreateView.as_view(), name='link_create'),
     # Ruta pública de Checkout
     path('pay/<int:pk>/', views.LinkCheckoutView.as_view(), name='link_checkout'),
+    path('pay/result/', views.PaymentResultView.as_view(), name='payment_result'),
 ]
