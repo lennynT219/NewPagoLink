@@ -9,10 +9,10 @@ from django.views import View
 from django.views.generic import RedirectView, TemplateView
 from django.views.generic.edit import FormView
 from .mixins import ContractRequiredMixin, RedirectIfAuthMixin
-from .models import Contract, CustomUser
+from accounts.models import CustomUser, Contract
 from .forms import LoginForm, RegisterForm
 from django.contrib.auth import get_user_model, login, logout
-from .tokens import account_activation_token
+from accounts.tokens import account_activation_token
 from . import services
 
 

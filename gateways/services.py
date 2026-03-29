@@ -77,3 +77,22 @@ class DatafastClient:
     except Exception as e:
       logger.exception(f"Error checking payment status: {str(e)}")
       return {'result': {'code': 'ERROR', 'description': str(e)}}
+
+  def refund_payment(self, transaction_id: str, amount: Decimal) -> Dict[str, Any]:
+    """
+    Solicita un reembolso a la pasarela.
+    """
+    url = f"{self.base_url}payments/{transaction_id}"
+    params = {
+        'entityId': self.entity_id,
+        'amount': "{:.2f}".format(amount),
+        'currency': 'USD',
+        'paymentType': 'RF' # Refund
+    }
+    
+    try:
+      response = requests.delete(url, params=params, headers=self._get_headers(), timeout=10)
+      return response.json()
+    except Exception as e:
+      logger.exception(f"Error processing refund: {str(e)}")
+      return {'result': {'code': 'ERROR', 'description': str(e)}}

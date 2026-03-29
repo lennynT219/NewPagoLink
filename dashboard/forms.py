@@ -10,7 +10,8 @@ from django.forms import (
   TextInput,
   ValidationError,
 )
-from .models import CustomUser, User
+from django.contrib.auth.models import User
+from accounts.models import CustomUser
 
 
 class RegisterForm(Form):

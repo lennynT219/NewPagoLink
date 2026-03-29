@@ -98,6 +98,30 @@ def generate_payments_excel(seller: CustomUser) -> io.BytesIO:
   output.seek(0)
   return output
 
+@transaction.atomic
+def request_refund(seller: CustomUser, payment: Payment, description: str) -> Refund:
+  """
+  Crea una solicitud de reembolso para un pago específico.
+  """
+  # Validaciones de seguridad
+  if payment.seller != seller:
+    raise ValueError("No tiene permisos sobre este pago.")
+  if payment.status != Payment.PaymentStatus.PAID:
+    raise ValueError("Solo se pueden reembolsar pagos confirmados.")
+  if hasattr(payment, 'refund'):
+    raise ValueError("Este pago ya tiene una solicitud de reembolso.")
+
+  refund = Refund.objects.create(
+    seller=seller,
+    payment=payment,
+    description=description,
+    amount=payment.amount,
+    state=False # Pendiente de aprobación
+  )
+  
+  # Opcional: Podríamos marcar el pago con un estado intermedio
+  return refund
+
 def get_seller_stats(seller: CustomUser) -> Dict[str, Any]:
   """Estadísticas del Dashboard."""
   links_count = Link.objects.filter(seller=seller).count()

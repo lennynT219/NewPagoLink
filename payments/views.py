@@ -6,7 +6,7 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.db.models import Sum
 from django.http import HttpResponse
-from .models import Link, Payment
+from .models import Link, Payment, Refund
 from .forms import LinkForm
 from . import services
 from gateways.services import DatafastClient
@@ -81,6 +81,39 @@ class PaymentExportExcelView(LoginRequiredMixin, ContractRequiredMixin, View):
     response = HttpResponse(excel_buffer.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="ventas_{seller.user.username}.xlsx"'
     return response
+
+class RefundListView(LoginRequiredMixin, ContractRequiredMixin, ListView):
+  """Historial de reembolsos del vendedor."""
+  model = Refund
+  template_name = 'payments/refund_list.html'
+  context_object_name = 'refunds'
+  def get_queryset(self):
+    return Refund.objects.filter(seller=self.request.user.customuser).order_by('-id')
+
+class RefundRequestView(LoginRequiredMixin, ContractRequiredMixin, View):
+  """Vista para solicitar un reembolso de un pago específico."""
+  template_name = 'payments/refund_form.html'
+
+  def get(self, request, payment_id):
+    payment = get_object_or_404(Payment, id=payment_id, seller=request.user.customuser)
+    return render(request, self.template_name, {'payment': payment})
+
+  def post(self, request, payment_id):
+    payment = get_object_or_404(Payment, id=payment_id, seller=request.user.customuser)
+    description = request.POST.get('description')
+    
+    if not description:
+      messages.error(request, "Debe proporcionar un motivo para el reembolso.")
+      return render(request, self.template_name, {'payment': payment})
+
+    try:
+      services.request_refund(request.user.customuser, payment, description)
+      messages.success(request, "Solicitud de reembolso enviada. Será procesada por nuestro equipo.")
+      return redirect('payments:payment_history')
+    except Exception as e:
+      messages.error(request, str(e))
+      return render(request, self.template_name, {'payment': payment})
+
 
 class LinkListView(LoginRequiredMixin, ContractRequiredMixin, ListView):
   model = Link

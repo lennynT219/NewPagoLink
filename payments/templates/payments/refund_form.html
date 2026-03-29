@@ -1,0 +1,48 @@
+{% extends 'dashboard/layouts/base.html' %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Solicitar Reembolso</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6 offset-md-3">
+                <div class="card card-danger">
+                    <div class="card-header">
+                        <h3 class="card-title">Confirmación de devolución</h3>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <div class="callout callout-danger">
+                                <h5>Resumen del Pago</h5>
+                                <p><strong>Cliente:</strong> {{ payment.first_name }} {{ payment.last_name }}</p>
+                                <p><strong>Monto:</strong> ${{ payment.amount }}</p>
+                                <p><strong>Fecha:</strong> {{ payment.link.created_at|date:"d/m/Y" }}</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Motivo del reembolso</label>
+                                <textarea name="description" class="form-control" rows="4" placeholder="Explique por qué solicita la devolución de este pago..." required></textarea>
+                                <small class="text-muted">Esta información será revisada por nuestro equipo de soporte.</small>
+                            </div>
+                        </div>
+                        <div class="card-footer text-right">
+                            <a href="{% url 'payments:payment_history' %}" class="btn btn-default">Cancelar</a>
+                            <button type="submit" class="btn btn-danger">Enviar Solicitud</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

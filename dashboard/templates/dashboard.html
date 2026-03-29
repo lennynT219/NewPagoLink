@@ -1,0 +1,115 @@
+{% extends 'dashboard/layouts/base.html' %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0">Resumen General</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <!-- Fila de Small Boxes -->
+        <div class="row">
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>{{ links_count|default:0 }}</h3>
+                        <p>Links Generados</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <a href="{% url 'payments:link_list' %}" class="small-box-footer">Ver todos <i class="fas fa-arrow-circle-right"></i></a>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>${{ total_sales|default:"0.00" }}</h3>
+                        <p>Total Recaudado</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <a href="{% url 'payments:payment_history' %}" class="small-box-footer">Ir a ventas <i class="fas fa-arrow-circle-right"></i></a>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>${{ total_refunds|default:"0.00" }}</h3>
+                        <p>Reembolsos Solicitados</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-undo"></i>
+                    </div>
+                    <a href="{% url 'payments:refund_list' %}" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-6">
+                <div class="small-box {% if active %}bg-primary{% else %}bg-danger{% endif %}">
+                    <div class="inner">
+                        <h3>{% if active %}ACTIVO{% else %}INACTIVO{% endif %}</h3>
+                        <p>Estado de Cuenta</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas {% if active %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i>
+                    </div>
+                    <a href="#" class="small-box-footer">Más info <i class="fas fa-info-circle"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card card-primary card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">Bienvenido, {{ seller_name }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Desde este panel puedes gestionar tus cobros de forma rápida y segura. Recuerda que tus fondos serán liquidados a la cuenta bancaria configurada.</p>
+                        <div class="mt-4">
+                            <a href="{% url 'payments:link_create' %}" class="btn btn-primary mr-2">
+                                <i class="fas fa-plus mr-1"></i> Generar Link
+                            </a>
+                            <a href="{% url 'banking:config' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-university mr-1"></i> Configurar Banco
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">Seguridad de Cuenta</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-unbordered">
+                            <li class="list-group-item">
+                                <b>Email Verificado</b> 
+                                <span class="float-right">
+                                    {% if email_active %}<i class="fas fa-check-circle text-success"></i>{% else %}<i class="fas fa-clock text-warning"></i>{% endif %}
+                                </span>
+                            </li>
+                            <li class="list-group-item">
+                                <b>Contrato Aceptado</b> 
+                                <span class="float-right"><i class="fas fa-check-circle text-success"></i></span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
