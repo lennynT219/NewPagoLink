@@ -15,5 +15,5 @@ class PaymentAdmin(admin.ModelAdmin):
 
 @admin.register(Refund)
 class RefundAdmin(admin.ModelAdmin):
-  list_display = ('payment', 'seller', 'amount', 'state', 'created_at')
-  list_filter = ('state',)
+  list_display = ('payment', 'seller', 'amount', 'status', 'created_at')
+  list_filter = ('status',)

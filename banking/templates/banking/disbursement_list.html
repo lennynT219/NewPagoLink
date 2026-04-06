@@ -1,0 +1,77 @@
+{% extends 'dashboard/layouts/base.html' %}
+{% load static %}
+
+{% block title %}Mis Retiros{% endblock %}
+
+{% block content %}
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1>Mis Solicitudes de Retiro</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Inicio</a></li>
+                    <li class="breadcrumb-item active">Retiros</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-primary card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">Historial de Solicitudes</h3>
+                        <div class="card-tools">
+                            <a href="{% url 'banking:disbursement_create' %}" class="btn btn-success btn-sm">
+                                <i class="fas fa-plus"></i> Solicitar Nuevo Retiro
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover text-nowrap">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Cuenta Destino</th>
+                                    <th>Estado</th>
+                                    <th>Procesado el</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in disbursements %}
+                                <tr>
+                                    <td>{{ item.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td><strong>${{ item.amount }}</strong></td>
+                                    <td>{{ item.method.bank.title }} - {{ item.method.account_number }}</td>
+                                    <td>
+                                        {% if item.status == 'PENDING' %}
+                                            <span class="badge badge-warning">Pendiente</span>
+                                        {% elif item.status == 'APPROVED' %}
+                                            <span class="badge badge-success">Aprobado</span>
+                                        {% else %}
+                                            <span class="badge badge-danger" title="{{ item.rejection_reason }}">Rechazado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.processed_at|date:"d/m/Y H:i"|default:"---" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No has realizado ninguna solicitud de retiro aún.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

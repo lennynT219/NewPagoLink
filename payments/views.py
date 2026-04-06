@@ -21,7 +21,7 @@ class AdminRefundListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
   template_name = 'payments/admin/refund_list.html'
   context_object_name = 'refunds'
   def get_queryset(self):
-    return Refund.objects.filter(state=False).order_by('created_at')
+    return Refund.objects.filter(status=Refund.RefundStatus.PENDING).order_by('created_at')
 
 class AdminRefundApproveView(LoginRequiredMixin, AdminRequiredMixin, View):
   """Vista para procesar la aprobación de un reembolso."""
@@ -36,17 +36,34 @@ class AdminRefundApproveView(LoginRequiredMixin, AdminRequiredMixin, View):
 class LinkCheckoutView(View):
   """Vista pública de Checkout."""
   template_name = 'payments/checkout.html'
+  inactive_template = 'payments/link_inactive.html'
 
   def get(self, request, pk, *args, **kwargs):
-    link = get_object_or_404(Link, pk=pk, active=True)
+    link = get_object_or_404(Link, pk=pk)
+    if not link.active:
+      return render(request, self.inactive_template, {'link': link})
+    
+    payment_id = request.GET.get('p')
+    payment = None
+    if payment_id:
+      payment = get_object_or_404(Payment, id=payment_id, link=link)
+
     return render(request, self.template_name, {
       'link': link, 
       'seller': link.seller,
+      'payment': payment, # Pasamos el pago para pre-rellenar campos en el HTML
       'DATAFAST_BASE_URL': settings.DATAFAST_BASE_URL
     })
 
   def post(self, request, pk, *args, **kwargs):
-    link = get_object_or_404(Link, pk=pk, active=True)
+    link = get_object_or_404(Link, pk=pk)
+    if not link.active:
+      return render(request, self.inactive_template, {'link': link})
+    payment_id = request.GET.get('p')
+    payment = None
+    if payment_id:
+      payment = get_object_or_404(Payment, id=payment_id, link=link)
+
     customer_data = {
       'first_name': request.POST.get('first_name'),
       'last_name': request.POST.get('last_name'),
@@ -54,11 +71,20 @@ class LinkCheckoutView(View):
       'identify': request.POST.get('identify'),
       'phone': request.POST.get('phone'),
     }
-    payment = Payment.objects.create(
-      link=link, seller=link.seller, description=link.description,
-      subtotal=link.subtotal, igv=link.igv, amount=link.amount, amount_client=link.amount,
-      **customer_data
-    )
+
+    if payment:
+      # Actualizar pago existente (invitación)
+      for key, value in customer_data.items():
+        setattr(payment, key, value)
+      payment.save()
+    else:
+      # Crear pago nuevo (pago directo desde link múltiple)
+      payment = Payment.objects.create(
+        link=link, seller=link.seller, description=link.description,
+        subtotal=link.subtotal, igv=link.igv, amount=link.amount, amount_client=link.amount,
+        **customer_data
+      )
+
     gateway = DatafastClient()
     from accounts.services import get_client_ip
     client_ip = get_client_ip(request)

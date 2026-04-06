@@ -17,16 +17,31 @@
     <div class="container-fluid">
         <!-- Fila de Small Boxes -->
         <div class="row">
+            <!-- Saldo Disponible (NUEVO) -->
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-primary">
+                    <div class="inner">
+                        <h3>${{ available_balance|default:0|floatformat:2 }}</h3>
+                        <p>Saldo Disponible</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <a href="{% url 'banking:disbursement_create' %}" class="small-box-footer">Retirar ahora <i class="fas fa-arrow-circle-right"></i></a>
+                </div>
+            </div>
+
+            <!-- Ventas de Hoy (NUEVO) -->
             <div class="col-lg-3 col-6">
                 <div class="small-box bg-info">
                     <div class="inner">
-                        <h3>{{ links_count|default:0 }}</h3>
-                        <p>Links Generados</p>
+                        <h3>${{ daily_sales|default:0|floatformat:2 }}</h3>
+                        <p>Ventas de Hoy</p>
                     </div>
                     <div class="icon">
-                        <i class="fas fa-link"></i>
+                        <i class="fas fa-chart-line"></i>
                     </div>
-                    <a href="{% url 'payments:link_list' %}" class="small-box-footer">Ver todos <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{% url 'payments:payment_history' %}" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
                 </div>
             </div>
             
@@ -34,7 +49,7 @@
                 <div class="small-box bg-success">
                     <div class="inner">
                         <h3>${{ total_sales|default:0|floatformat:2 }}</h3>
-                        <p>Total Recaudado</p>
+                        <p>Total Recaudado (Histórico)</p>
                     </div>
                     <div class="icon">
                         <i class="fas fa-shopping-cart"></i>
@@ -53,19 +68,6 @@
                         <i class="fas fa-undo"></i>
                     </div>
                     <a href="{% url 'payments:refund_list' %}" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
-                </div>
-            </div>
-
-            <div class="col-lg-3 col-6">
-                <div class="small-box {% if active %}bg-primary{% else %}bg-danger{% endif %}">
-                    <div class="inner">
-                        <h3>{% if active %}ACTIVO{% else %}INACTIVO{% endif %}</h3>
-                        <p>Estado de Cuenta</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas {% if active %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i>
-                    </div>
-                    <a href="#" class="small-box-footer">Más info <i class="fas fa-info-circle"></i></a>
                 </div>
             </div>
         </div>

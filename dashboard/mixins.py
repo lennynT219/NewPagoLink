@@ -17,9 +17,10 @@ class RedirectIfAuthMixin:
     return super().dispatch(request, *args, **kwargs) # type: ignore
 
 class AdminRequiredMixin(UserPassesTestMixin):
-  """Mixin para restringir el acceso únicamente a usuarios del Staff (Administradores)."""
+  """Mixin para restringir el acceso únicamente a usuarios con el rol administrativo de la App."""
   def test_func(self):
-    return self.request.user.is_active and self.request.user.is_staff
+    user = self.request.user
+    return user.is_active and hasattr(user, 'customuser') and user.customuser.is_admin_role
 
   def handle_no_permission(self):
     return redirect('dashboard:dashboard')

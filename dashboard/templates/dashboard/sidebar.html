@@ -54,6 +54,20 @@
           </a>
         </li>
 
+        <li class="nav-header">FINANZAS Y RETIROS</li>
+        <li class="nav-item">
+          <a href="{% url 'banking:disbursement_list' %}" class="nav-link">
+            <i class="nav-icon fas fa-wallet"></i>
+            <p>Mis Retiros</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'banking:disbursement_create' %}" class="nav-link text-info">
+            <i class="nav-icon fas fa-hand-holding-usd"></i>
+            <p>Solicitar Retiro</p>
+          </a>
+        </li>
+
         <li class="nav-header">CONFIGURACIÓN</li>
         <li class="nav-item">
           <a href="{% url 'banking:config' %}" class="nav-link">
@@ -76,7 +90,7 @@
           </a>
         </li>
 
-        {% if user.is_staff %}
+        {% if request.user.customuser.is_admin_role %}
         <li class="nav-header text-warning">ADMINISTRACIÓN</li>
         <li class="nav-item">
           <a href="{% url 'banking:bank_list' %}" class="nav-link">
@@ -88,6 +102,12 @@
           <a href="{% url 'payments:admin_refund_list' %}" class="nav-link">
             <i class="nav-icon fas fa-tools"></i>
             <p>Aprobar Reembolsos</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'banking:admin_disbursement_list' %}" class="nav-link">
+            <i class="nav-icon fas fa-cash-register"></i>
+            <p>Aprobar Desembolsos</p>
           </a>
         </li>
         {% endif %}

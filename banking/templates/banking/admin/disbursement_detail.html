@@ -1,0 +1,113 @@
+{% extends 'dashboard/layouts/base.html' %}
+{% load static %}
+
+{% block title %}Procesar Desembolso{% endblock %}
+
+{% block content %}
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1>Detalle de Solicitud de Desembolso</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Inicio</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'banking:admin_disbursement_list' %}">Desembolsos</a></li>
+                    <li class="breadcrumb-item active">Procesar</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card card-primary card-outline">
+                    <div class="card-body box-profile">
+                        <div class="text-center">
+                            <i class="fas fa-user-circle fa-4x text-primary"></i>
+                        </div>
+                        <h3 class="profile-username text-center">{{ disbursement.vendor.user.get_full_name }}</h3>
+                        <p class="text-muted text-center">{{ disbursement.vendor.user.email }}</p>
+                        <ul class="list-group list-group-unbordered mb-3">
+                            <li class="list-group-item">
+                                <b>Saldo Actual</b> <a class="float-right text-success font-weight-bold">${{ disbursement.vendor.available_balance }}</a>
+                            </li>
+                            <li class="list-group-item">
+                                <b>Monto Solicitado</b> <a class="float-right text-primary font-weight-bold">${{ disbursement.amount }}</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card card-info card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-university mr-2"></i>Datos Bancarios del Vendedor</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <strong><i class="fas fa-university mr-1"></i> Banco</strong>
+                                <p class="text-muted">{{ disbursement.method.bank.title }}</p>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong><i class="fas fa-file-invoice-dollar mr-1"></i> Tipo de Cuenta</strong>
+                                <p class="text-muted">{{ disbursement.method.get_account_type_display }}</p>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <strong><i class="fas fa-hashtag mr-1"></i> Número de Cuenta</strong>
+                                <p class="text-muted">{{ disbursement.method.account_number }}</p>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong><i class="fas fa-id-card mr-1"></i> Titular</strong>
+                                <p class="text-muted">{{ disbursement.method.fullname }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-dark card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-cogs mr-2"></i>Acción Administrativa</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Motivo de rechazo (Opcional)</label>
+                                <textarea name="rejection_reason" class="form-control" rows="2" placeholder="Solo si rechaza la solicitud..."></textarea>
+                            </div>
+                            <div class="alert alert-warning py-2 small">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                Al aprobar, se descontará automáticamente el monto del saldo del vendedor.
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="row">
+                                <div class="col-6">
+                                    <button type="submit" name="action" value="approve" class="btn btn-success btn-block" onclick="return confirm('¿Está seguro de APROBAR este desembolso?')">
+                                        <i class="fas fa-check-circle mr-1"></i> Aprobar Desembolso
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button type="submit" name="action" value="reject" class="btn btn-danger btn-block" onclick="return confirm('¿Está seguro de RECHAZAR esta solicitud?')">
+                                        <i class="fas fa-times-circle mr-1"></i> Rechazar Solicitud
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

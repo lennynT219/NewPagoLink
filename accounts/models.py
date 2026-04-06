@@ -8,6 +8,8 @@ class CustomUser(models.Model):
   identification = models.BigIntegerField(unique=True)
   state = models.BooleanField(default=True)  # type: ignore
   email_active = models.BooleanField(default=False)  # type: ignore
+  is_admin_role = models.BooleanField(default=False)  # Nuevo campo Admin App
+  available_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
   class Meta:
     db_table = 'dashboard_customuser'

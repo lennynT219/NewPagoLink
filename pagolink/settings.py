@@ -5,8 +5,13 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+from decimal import Decimal
+
 # Initialize environ
-env = environ.Env(DEBUG=(bool, False))
+env = environ.Env(
+  DEBUG=(bool, False),
+  TAX_IVA=(Decimal, Decimal('0.12'))
+)
 
 # Read .env file
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
@@ -139,3 +144,4 @@ DATAFAST_AUTH_TOKEN = env('DATAFAST_AUTH_TOKEN')
 DATAFAST_MID = env('DATAFAST_MID')
 DATAFAST_TID = env('DATAFAST_TID')
 DATAFAST_TEST_MODE = env('DATAFAST_TEST_MODE', default=None)
+TAX_IVA = Decimal(os.getenv('TAX_IVA', '0.12'))

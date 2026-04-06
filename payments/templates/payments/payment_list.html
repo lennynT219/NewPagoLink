@@ -65,10 +65,12 @@
                                     <td>{{ payment.email }}</td>
                                     <td><strong>${{ payment.amount|floatformat:2 }}</strong></td>
                                     <td>
-                                        {% if payment.state %}
-                                        <span class="badge bg-success">Pagado</span>
+                                        {% if payment.status == 'PAID' %}
+                                            <span class="badge badge-success">Pagado</span>
+                                        {% elif payment.status == 'PENDING' %}
+                                            <span class="badge badge-warning">Pendiente</span>
                                         {% else %}
-                                        <span class="badge bg-danger">Fallido</span>
+                                            <span class="badge badge-danger">Fallido</span>
                                         {% endif %}
                                     </td>
                                     <td><small class="text-muted">{{ payment.transaction_id|default:"---" }}</small></td>

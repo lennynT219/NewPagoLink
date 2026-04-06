@@ -23,3 +23,21 @@ class PaymentMethod(models.Model):
 
   def __str__(self):
     return f'{self.bank.title} - {self.account_number}'  # type: ignore
+
+
+class DisbursementRequest(models.Model):
+  class Status(models.TextChoices):
+    PENDING = 'PENDING', _('Pendiente')
+    APPROVED = 'APPROVED', _('Aprobado')
+    REJECTED = 'REJECTED', _('Rechazado')
+
+  vendor = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='disbursements')
+  method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT, related_name='disbursements')
+  amount = models.DecimalField(max_digits=12, decimal_places=2)
+  status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+  rejection_reason = models.TextField(null=True, blank=True)
+  created_at = models.DateTimeField(auto_now_add=True)
+  processed_at = models.DateTimeField(null=True, blank=True)
+
+  def __str__(self):
+    return f'Solicitud de {self.vendor.user.username} - {self.amount} ({self.status})'  # type: ignore

@@ -1,0 +1,81 @@
+{% extends 'dashboard/layouts/base.html' %}
+{% load static %}
+
+{% block title %}Solicitar Retiro{% endblock %}
+
+{% block content %}
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1>Solicitar Retiro de Fondos</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Inicio</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'banking:disbursement_list' %}">Retiros</a></li>
+                    <li class="breadcrumb-item active">Nueva Solicitud</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6 offset-md-3">
+                
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>${{ request.user.customuser.available_balance }}</h3>
+                        <p>Saldo Disponible para Retiro</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                </div>
+
+                <div class="card card-success card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">Nueva Solicitud</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {{ form.non_field_errors }}
+                                </div>
+                            {% endif %}
+                            
+                            <div class="form-group">
+                                <label for="{{ form.amount.id_for_label }}">Monto a Retirar</label>
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                    <span class="text-danger">{{ form.amount.errors }}</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.method.id_for_label }}">Cuenta Bancaria de Destino</label>
+                                {{ form.method }}
+                                <small class="form-text text-muted">¿No tienes cuentas? <a href="{% url 'banking:config' %}">Configura una aquí</a>.</small>
+                                {% if form.method.errors %}
+                                    <span class="text-danger">{{ form.method.errors }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-success btn-block">
+                                <i class="fas fa-paper-plane"></i> Enviar Solicitud
+                            </button>
+                            <a href="{% url 'banking:disbursement_list' %}" class="btn btn-default btn-block">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

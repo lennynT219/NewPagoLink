@@ -8,4 +8,4 @@ DELETE FROM auth_user
 WHERE
   id = 6;
 
-mvvt nodu gokc vjzi
+mvvt nodu gokc vjzimvvt nodu gokc vjzi

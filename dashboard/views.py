@@ -80,6 +80,10 @@ class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
 
     if stats:
       context.update(stats)
+    
+    # Forzar el estado real del objeto de usuario actual
+    context['email_active'] = current_user.email_active
+    context['active'] = current_user.state
 
     return context
 
