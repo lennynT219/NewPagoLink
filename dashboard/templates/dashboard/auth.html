@@ -163,26 +163,47 @@
             padding: 2.5rem;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             position: relative;
             overflow: hidden;
         }
 
-        .forms-slider {
-            display: flex;
-            width: 200%;
-            transition: transform var(--transition);
-            transform: translateX(0);
-        }
-
-        #auth-toggle:checked ~ .auth-card .forms-slider {
-            transform: translateX(-50%);
-        }
-
         .form-page {
-            width: 50%;
-            flex-shrink: 0;
-            padding-right: 2.5rem;
+            width: 100%;
+            position: relative;
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+
+        .form-page-login {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .form-page-register {
+            position: absolute;
+            top: 2.5rem;
+            left: 2.5rem;
+            right: 2.5rem;
+            opacity: 0;
+            transform: translateX(30px);
+            pointer-events: none;
+        }
+
+        #auth-toggle:checked ~ .auth-card .form-page-login {
+            opacity: 0;
+            transform: translateX(-30px);
+            pointer-events: none;
+        }
+
+        #auth-toggle:checked ~ .auth-card .form-page-register {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+            position: relative;
+            top: auto;
+            left: auto;
+            right: auto;
         }
 
         .form-page form {
@@ -354,7 +375,6 @@
                 box-shadow: none;
             }
 
-            /* Brand panel: compact header */
             .brand-panel {
                 width: 100%;
                 min-width: unset;
@@ -369,26 +389,19 @@
             .brand-subtitle { font-size: 0.82rem; margin-top: 0.3rem; }
             .brand-dots { margin-top: 1rem; }
 
-            /* Form panel: takes remaining space */
             .form-panel {
                 width: 100%;
                 flex: 1;
                 padding: 1.5rem;
-                overflow: hidden;
+            }
+
+            .form-page-register {
+                top: 1.5rem;
+                left: 1.5rem;
+                right: 1.5rem;
             }
 
             .tab-switcher { margin-bottom: 1.5rem; }
-
-            /* Slider stays horizontal for smooth animation */
-            .forms-slider {
-                width: 200%;
-                flex: 1;
-            }
-
-            .form-page {
-                padding-right: 1.5rem;
-            }
-
             .form-page h3 { font-size: 1.3rem; }
             .input-group-icon input { padding: 12px 16px 12px 42px; font-size: 0.9rem; }
         }
@@ -398,22 +411,23 @@
             .brand-panel { padding: 1.5rem 1rem 1.2rem; border-radius: 0 0 20px 20px; }
             .brand-title { font-size: 1.15rem; }
             .form-panel { padding: 1.2rem; }
-            .form-page { padding-right: 1.2rem; }
+            .form-page-register { top: 1.2rem; left: 1.2rem; right: 1.2rem; }
             .form-page h3 { font-size: 1.15rem; }
             .tab-btn { font-size: 0.82rem; padding: 8px 12px; }
             .input-group-icon input { padding: 11px 14px 11px 38px; font-size: 0.85rem; }
             .input-group-icon i { left: 13px; font-size: 0.9rem; }
         }
 
-        /* Landscape mobile: keep card layout */
+        /* Landscape mobile: compact card layout */
         @media (max-width: 900px) and (orientation: landscape) {
             .auth-card { min-height: auto; max-width: 640px; }
-            .brand-panel { min-width: 240px; }
+            .brand-panel { min-width: 240px; padding: 1.5rem; }
             .form-panel { padding: 1.5rem; }
-            .form-page { padding-right: 1.5rem; }
-            .form-page h3 { font-size: 1.2rem; }
+            .form-page-register { top: 1.5rem; left: 1.5rem; right: 1.5rem; }
+            .form-page h3 { font-size: 1.15rem; }
             .input-group-icon { margin-bottom: 0.5rem; }
             .input-group-icon input { padding: 10px 14px 10px 38px; }
+            .form-links { margin-top: 0.5rem; }
         }
     </style>
 </head>
@@ -466,11 +480,10 @@
                 </label>
             </div>
 
-            <!-- ═══ Forms Slider ═══ -->
-            <div class="forms-slider">
+            <!-- ═══ Forms ═══ -->
 
                 <!-- ── LOGIN ── -->
-                <div class="form-page">
+                <div class="form-page form-page-login">
                     <h3>Bienvenido de nuevo</h3>
                     <p class="form-subtitle">Ingresá tus credenciales para acceder</p>
 
@@ -506,7 +519,7 @@
                 </div>
 
                 <!-- ── REGISTER ── -->
-                <div class="form-page">
+                <div class="form-page form-page-register">
                     <h3>Creá tu cuenta</h3>
                     <p class="form-subtitle">Completá tus datos para empezar</p>
 
@@ -564,8 +577,7 @@
                     </form>
                 </div>
 
-            </div><!-- /forms-slider -->
-        </div><!-- /form-panel -->
+            </div><!-- /form-panel -->
 
     </div><!-- /auth-card -->
 
