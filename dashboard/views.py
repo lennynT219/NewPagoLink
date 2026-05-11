@@ -17,14 +17,26 @@ from . import services
 
 
 class Register(RedirectIfAuthMixin, FormView):
-  template_name = 'dashboard/register.html'
+  template_name = 'dashboard/auth.html'
   form_class = RegisterForm
   success_url = reverse_lazy('dashboard:login')
+
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    context['login_form'] = LoginForm()
+    context['register_form'] = context.pop('form', self.get_form())
+    context['active_tab'] = 'register'
+    return context
 
   def form_valid(self, form):
     user = services.create_user(form.cleaned_data)
     services.send_activation_email(user, self.request)
     return super().form_valid(form)
+
+  def form_invalid(self, form):
+    context = self.get_context_data(form=form)
+    context['register_form'] = form
+    return self.render_to_response(context)
 
 
 class ActivateAccount(View):
@@ -54,7 +66,7 @@ class ActivateAccount(View):
 
 
 class Login(RedirectIfAuthMixin, FormView):
-  template_name = 'dashboard/login.html'
+  template_name = 'dashboard/auth.html'
   form_class = LoginForm
 
   def get_form_kwargs(self):
@@ -62,12 +74,24 @@ class Login(RedirectIfAuthMixin, FormView):
     kwargs['request'] = self.request
     return kwargs
 
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    context['register_form'] = RegisterForm()
+    context['login_form'] = context.pop('form', self.get_form())
+    context['active_tab'] = 'login'
+    return context
+
   def form_valid(self, form):
     user = form.get_user()
     login(self.request, user)
     redirect_url = services.login_redirect_url(user)
     messages.success(self.request, f'¡Bienvenido de nuevo, {user.first_name or user.username}!')
     return redirect(redirect_url)
+
+  def form_invalid(self, form):
+    context = self.get_context_data(form=form)
+    context['login_form'] = form
+    return self.render_to_response(context)
 
 
 class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
