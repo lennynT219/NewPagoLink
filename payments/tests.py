@@ -692,3 +692,289 @@ class AdminRefundListTemplateTests(TestCase):
         """Empty state message must be preserved."""
         self.assertIn('{% empty %}', self.content)
         self.assertIn('No hay reembolsos', self.content)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Phase 4: Buyer Experience Template Redesign (T4.1-T4.3)
+# ══════════════════════════════════════════════════════════════════════
+
+
+# ── T4.1: Checkout Template ──
+
+class CheckoutTemplateTests(TestCase):
+    """T4.1: Verify payments/checkout.html uses landing base + design-system."""
+
+    @property
+    def content(self):
+        return _read_template('payments', 'payments/checkout.html')
+
+    # ── Extends landing base ──
+
+    def test_checkout_extends_landing_base(self):
+        """Checkout must extend landing/layouts/base.html."""
+        self.assertIn("{% extends 'landing/layouts/base.html' %}", self.content,
+                      'checkout.html must extend landing base')
+
+    def test_checkout_uses_content_block(self):
+        """Checkout content must be in {% block content %}."""
+        self.assertIn('{% block content %}', self.content,
+                      'checkout.html must use content block')
+        self.assertIn('{% endblock %}', self.content,
+                      'checkout.html must close content block')
+
+    # ── Standalone HTML removed ──
+
+    def test_checkout_not_standalone_html(self):
+        """Must NOT be a standalone HTML document."""
+        self.assertNotIn('<!DOCTYPE html>', self.content,
+                         'checkout.html must not be standalone HTML - extends base')
+
+    # ── AdminLTE removed ──
+
+    def test_checkout_removes_adminlte_cdn(self):
+        """Must NOT load AdminLTE 3.2 from CDN."""
+        self.assertNotIn('admin-lte', self.content.lower(),
+                         'AdminLTE CDN links must be removed from checkout')
+        self.assertNotIn('adminlte', self.content.lower(),
+                         'AdminLTE references must be removed from checkout')
+
+    # ── Design-system classes present ──
+
+    def test_checkout_has_card_modern(self):
+        """Payment summary card must use .card-modern."""
+        self.assertIn('card-modern', self.content,
+                      'checkout.html must contain card-modern class')
+
+    def test_checkout_has_btn_primary_auth(self):
+        """Submit button must use .btn-primary-auth."""
+        self.assertIn('btn-primary-auth', self.content,
+                      'checkout.html must use btn-primary-auth class')
+
+    def test_checkout_has_input_modern(self):
+        """Form fields must use .input-modern."""
+        self.assertIn('input-modern', self.content,
+                      'checkout.html must use input-modern for form fields')
+
+    # ── Context variables preserved ──
+
+    def test_checkout_preserves_link_context(self):
+        """All link context variables must be preserved."""
+        self.assertIn('link.description', self.content)
+        self.assertIn('link.amount', self.content)
+        self.assertIn('link.seller.user.get_full_name', self.content)
+
+    def test_checkout_preserves_datafast_context(self):
+        """Datafast context variables must be preserved."""
+        self.assertIn('DATAFAST_BASE_URL', self.content)
+        self.assertIn('checkout_id', self.content)
+        self.assertIn('payment.id', self.content)
+
+    # ── Form fields preserved ──
+
+    def test_checkout_preserves_form_fields(self):
+        """All buyer form fields must be preserved."""
+        self.assertIn('name="first_name"', self.content)
+        self.assertIn('name="last_name"', self.content)
+        self.assertIn('name="email"', self.content)
+        self.assertIn('name="identify"', self.content)
+        self.assertIn('name="phone"', self.content)
+
+    def test_checkout_preserves_csrf(self):
+        """CSRF token must be preserved."""
+        self.assertIn('{% csrf_token %}', self.content)
+
+    # ── Step conditional logic preserved ──
+
+    def test_checkout_preserves_step_conditional(self):
+        """Step conditional logic must be preserved."""
+        self.assertIn("{% if not step or step == 'info' %}", self.content)
+        self.assertIn("{% elif step == 'payment' %}", self.content)
+
+    # ── Datafast widget structure preserved ──
+
+    def test_checkout_preserves_datafast_widget_options(self):
+        """wpwlOptions script block must be preserved."""
+        self.assertIn('wpwlOptions', self.content,
+                      'Datafast wpwlOptions must be preserved')
+
+    def test_checkout_preserves_datafast_widget_script(self):
+        """Datafast paymentWidgets.js script must be preserved."""
+        self.assertIn('paymentWidgets.js', self.content,
+                      'Datafast paymentWidgets.js must be preserved')
+
+    def test_checkout_preserves_datafast_validations(self):
+        """Datafast additional validations script must be preserved."""
+        self.assertIn('dfAdditionalValidations1.js', self.content,
+                      'Datafast validations script must be preserved')
+
+    # ── jQuery loaded ──
+
+    def test_checkout_loads_jquery(self):
+        """jQuery must be loaded for Datafast widget."""
+        jquery_loaded = 'jquery' in self.content.lower()
+        self.assertTrue(jquery_loaded,
+                        'checkout.html must load jQuery for Datafast widget')
+
+    # ── Landing aesthetic matching ──
+
+    def test_checkout_uses_design_tokens(self):
+        """Template must reference design-system tokens (navy/teal colors)."""
+        content_lower = self.content.lower()
+        uses_tokens = (
+            'teal' in content_lower or
+            'navy' in content_lower or
+            'design-system' in content_lower
+        )
+        self.assertTrue(uses_tokens,
+                        'checkout.html must use design-system color tokens')
+
+    def test_checkout_has_amount_prominent(self):
+        """Amount must be displayed in a prominent way."""
+        self.assertIn('link.amount', self.content,
+                      'Amount must be displayed prominently')
+
+
+# ── T4.2: Payment Result Template ──
+
+class PaymentResultTemplateTests(TestCase):
+    """T4.2: Verify payments/payment_result.html uses landing base + design-system."""
+
+    @property
+    def content(self):
+        return _read_template('payments', 'payments/payment_result.html')
+
+    # ── Extends landing base ──
+
+    def test_result_extends_landing_base(self):
+        """Payment result must extend landing/layouts/base.html."""
+        self.assertIn("{% extends 'landing/layouts/base.html' %}", self.content,
+                      'payment_result.html must extend landing base')
+
+    def test_result_uses_content_block(self):
+        """Content must be in {% block content %}."""
+        self.assertIn('{% block content %}', self.content)
+        self.assertIn('{% endblock %}', self.content)
+
+    # ── Standalone HTML removed ──
+
+    def test_result_not_standalone_html(self):
+        """Must NOT be a standalone HTML document."""
+        self.assertNotIn('<!DOCTYPE html>', self.content,
+                         'payment_result must not be standalone HTML')
+
+    # ── AdminLTE removed ──
+
+    def test_result_removes_adminlte_cdn(self):
+        """Must NOT load AdminLTE 3.2 from CDN."""
+        self.assertNotIn('admin-lte', self.content.lower(),
+                         'AdminLTE CDN must be removed from payment_result')
+        self.assertNotIn('adminlte', self.content.lower())
+
+    # ── Design-system classes ──
+
+    def test_result_has_card_modern(self):
+        """Result container must use .card-modern."""
+        self.assertIn('card-modern', self.content,
+                      'payment_result.html must use card-modern class')
+
+    # ── Success state ──
+
+    def test_result_preserves_success_conditional(self):
+        """Success conditional logic must be preserved."""
+        self.assertIn('{% if success %}', self.content)
+
+    def test_result_has_success_check_icon(self):
+        """Must use check-circle icon for success."""
+        self.assertIn('check-circle', self.content,
+                      'Success state must use check-circle icon')
+
+    def test_result_has_success_heading(self):
+        """'¡Pago Exitoso!' heading must be preserved."""
+        self.assertIn('Pago Exitoso', self.content)
+
+    # ── Failure state ──
+
+    def test_result_preserves_failure_conditional(self):
+        """Failure conditional logic must be preserved (else or {% if not success %})."""
+        self.assertTrue(
+            '{% else %}' in self.content or '{% endif %}' in self.content,
+            'Failure conditional must be preserved'
+        )
+
+    def test_result_has_error_icon(self):
+        """Must use times-circle icon for failure."""
+        self.assertIn('times-circle', self.content,
+                      'Failure state must use times-circle icon')
+
+    def test_result_has_failure_heading(self):
+        """'Pago Fallido' heading must be preserved."""
+        self.assertIn('Pago Fallido', self.content)
+
+    # ── Context variables ──
+
+    def test_result_preserves_payment_vars(self):
+        """Payment context variables must be preserved."""
+        self.assertIn('payment.description', self.content)
+        self.assertIn('payment.amount', self.content)
+        self.assertIn('payment.transaction_id', self.content)
+
+    def test_result_preserves_error_msg(self):
+        """error_msg context variable must be preserved."""
+        self.assertIn('error_msg', self.content)
+
+    # ── "Volver al inicio" button ──
+
+    def test_result_has_btn_secondary(self):
+        """Should have at least a secondary/home button."""
+        self.assertIn('btn-secondary', self.content,
+                      'payment_result should have btn-secondary style')
+
+
+# ── T4.3: Link Inactive Template ──
+
+class LinkInactiveTemplateTests(TestCase):
+    """T4.3: Verify payments/link_inactive.html uses landing base with correct icons."""
+
+    @property
+    def content(self):
+        return _read_template('payments', 'payments/link_inactive.html')
+
+    # ── Extends landing base ──
+
+    def test_inactive_extends_landing_base(self):
+        """Must extend landing/layouts/base.html."""
+        self.assertIn("{% extends 'landing/layouts/base.html' %}", self.content,
+                      'link_inactive.html must extend landing base')
+
+    # ── Design-system classes ──
+
+    def test_inactive_has_card_modern(self):
+        """Must use .card-modern for centered layout."""
+        self.assertIn('card-modern', self.content,
+                      'link_inactive.html must use card-modern class')
+
+    # ── Icon classes compatible with FA5 (loaded by landing base) ──
+
+    def test_inactive_has_fa_icon(self):
+        """Must use font awesome icon classes."""
+        has_fa_icon = 'fa-' in self.content
+        self.assertTrue(has_fa_icon,
+                        'link_inactive.html must use font awesome icons')
+
+    # ── Context variables ──
+
+    def test_inactive_preserves_link_context(self):
+        """link.description context variable must be preserved."""
+        self.assertIn('link.description', self.content)
+
+    # ── URL references ──
+
+    def test_inactive_preserves_home_url(self):
+        """URL to landing index must be preserved."""
+        self.assertIn("{% url 'landing:index' %}", self.content)
+
+    # ── Message content ──
+
+    def test_inactive_preserves_message(self):
+        """The 'not available' message must be preserved."""
+        self.assertIn('no está disponible', self.content)

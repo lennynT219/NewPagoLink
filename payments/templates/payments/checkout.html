@@ -1,88 +1,110 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagar Cobro - PagoLink</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        body { background-color: #f4f6f9; }
-        .checkout-container { max-width: 600px; margin: 50px auto; }
-        .payment-summary { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        /* Estilos para el widget de Datafast */
-        .wpwl-form-card { background: #ffffff !important; border: none !important; box-shadow: none !important; }
-        .wpwl-button-pay { background-color: #007bff !important; border-color: #007bff !important; width: 100% !important; }
-    </style>
-</head>
-<body>
+{% extends 'landing/layouts/base.html' %}
+{% load static %}
 
-<div class="checkout-container">
-    <div class="text-center mb-4">
-        <h2>PagoLink</h2>
-        <p class="text-muted">Procesamiento de pagos seguro</p>
+{% block title %}Pagar Cobro{% endblock %}
+
+{% block content %}
+<!-- jQuery required by Datafast widget -->
+<script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
+
+<section class="section-container sm" style="padding-top: 100px;">
+    <!-- Header -->
+    <div class="text-center mb-6">
+        <i class="fas fa-shield-alt fa-2x" style="color: var(--teal);"></i>
+        <h2 style="color: var(--navy-900); font-size: var(--font-size-2xl); margin-top: var(--space-2);">
+            PagoLink
+        </h2>
+        <p style="color: var(--gray-500); font-size: var(--font-size-sm);">
+            Procesamiento de pagos seguro
+        </p>
     </div>
 
     {% if not step or step == 'info' %}
-    <div class="payment-summary">
-        <h4 class="mb-3 text-primary"><i class="fas fa-shopping-cart"></i> Resumen del Cobro</h4>
-        <div class="d-flex justify-content-between mb-2">
-            <span>Concepto:</span>
-            <span class="font-weight-bold">{{ link.description }}</span>
+    <!-- Step 1: Buyer Information -->
+    <div class="card-modern">
+        <h3 style="color: var(--teal); font-size: var(--font-size-xl); margin-bottom: var(--space-5); display: flex; align-items: center; gap: var(--space-2);">
+            <i class="fas fa-shopping-cart"></i> Resumen del Cobro
+        </h3>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-3);">
+            <span style="color: var(--gray-500);">Concepto:</span>
+            <span style="font-weight: var(--font-weight-semibold); color: var(--navy-900);">{{ link.description }}</span>
         </div>
-        <div class="d-flex justify-content-between mb-2">
-            <span>Vendedor:</span>
-            <span>{{ link.seller.user.get_full_name }}</span>
+        <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-3);">
+            <span style="color: var(--gray-500);">Vendedor:</span>
+            <span style="color: var(--gray-700);">{{ link.seller.user.get_full_name }}</span>
         </div>
-        <hr>
-        <div class="d-flex justify-content-between mb-4">
-            <span class="h5">Total a Pagar:</span>
-            <span class="h5 font-weight-bold text-success">${{ link.amount }}</span>
+
+        <hr style="border-color: var(--gray-200); margin: var(--space-4) 0;">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6); background: var(--gray-50); padding: var(--space-4); border-radius: var(--radius-sm);">
+            <span style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--navy-900);">Total a Pagar:</span>
+            <span style="font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); color: var(--teal);">${{ link.amount }}</span>
         </div>
 
         <form method="post">
             {% csrf_token %}
-            <h5 class="mb-3 border-bottom pb-2">Tus Datos</h5>
-            <div class="row">
-                <div class="col-md-6 form-group">
-                    <label>Nombre</label>
-                    <input type="text" name="first_name" class="form-control" required placeholder="Ej. Juan">
+            <h4 style="color: var(--navy-900); font-size: var(--font-size-lg); margin-bottom: var(--space-4); padding-bottom: var(--space-2); border-bottom: 2px solid var(--gray-200);">
+                Tus Datos
+            </h4>
+
+            <div class="grid-2" style="margin-bottom: var(--space-4);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
+                        Nombre
+                    </label>
+                    <input type="text" name="first_name" class="input-modern" required placeholder="Ej. Juan">
                 </div>
-                <div class="col-md-6 form-group">
-                    <label>Apellido</label>
-                    <input type="text" name="last_name" class="form-control" required placeholder="Ej. Pérez">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Correo Electrónico</label>
-                <input type="email" name="email" class="form-control" required placeholder="tu@email.com">
-            </div>
-            <div class="row">
-                <div class="col-md-6 form-group">
-                    <label>Cédula/RUC</label>
-                    <input type="text" name="identify" class="form-control" required placeholder="0000000000">
-                </div>
-                <div class="col-md-6 form-group">
-                    <label>Teléfono</label>
-                    <input type="text" name="phone" class="form-control" required placeholder="0999999999">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
+                        Apellido
+                    </label>
+                    <input type="text" name="last_name" class="input-modern" required placeholder="Ej. Pérez">
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary btn-block btn-lg mt-3">
+
+            <div style="margin-bottom: var(--space-4);">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
+                    Correo Electrónico
+                </label>
+                <input type="email" name="email" class="input-modern" required placeholder="tu@email.com">
+            </div>
+
+            <div class="grid-2" style="margin-bottom: var(--space-4);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
+                        Cédula/RUC
+                    </label>
+                    <input type="text" name="identify" class="input-modern" required placeholder="0000000000">
+                </div>
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
+                        Teléfono
+                    </label>
+                    <input type="text" name="phone" class="input-modern" required placeholder="0999999999">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary-auth" style="width: 100%; justify-content: center; margin-top: var(--space-2);">
                 Continuar al Pago <i class="fas fa-arrow-right ml-2"></i>
             </button>
         </form>
     </div>
+
     {% elif step == 'payment' %}
-    <div class="payment-summary">
-        <h4 class="mb-4 text-center">Ingresa los datos de tu tarjeta</h4>
-        
+    <!-- Step 2: Card Payment (Datafast Widget) -->
+    <div class="card-modern">
+        <h4 style="text-align: center; color: var(--navy-900); margin-bottom: var(--space-6);">
+            Ingresa los datos de tu tarjeta
+        </h4>
+
         <!-- Opciones de Configuración del Widget (Mandatorio Datafast) -->
         <script>
             var wpwlOptions = {
                 style: "card",
                 locale: "es",
                 labels: {
-                    cvv: "CVV", 
+                    cvv: "CVV",
                     cardHolder: "Nombre (Igual que en la tarjeta)"
                 },
                 onReady: function() {
@@ -95,25 +117,40 @@
 
         <!-- Script de Datafast para el widget de pagos -->
         <script src="{{ DATAFAST_BASE_URL }}paymentWidgets.js?checkoutId={{ checkout_id }}"></script>
-        
+
         <form action="{{ request.scheme }}://{{ request.get_host }}{% url 'payments:payment_result' %}?payment_id={{ payment.id }}" class="paymentWidgets" data-brands="VISA MASTER AMEX DINERS DISCOVER"></form>
-        
-        <div class="mt-4 p-3 bg-light rounded text-center">
-            <p class="small text-muted mb-0">
-                <i class="fas fa-lock text-success mr-2"></i> 
+
+        <div style="margin-top: var(--space-4); padding: var(--space-3); background: var(--gray-100); border-radius: var(--radius-sm); text-align: center;">
+            <p style="font-size: var(--font-size-xs); color: var(--gray-600); margin: 0;">
+                <i class="fas fa-lock" style="color: var(--success); margin-right: var(--space-2);"></i>
                 Sus datos están protegidos por encriptación SSL de grado bancario.
             </p>
         </div>
     </div>
     {% endif %}
 
-    <div class="text-center mt-4">
-        <p class="text-muted small">&copy; 2026 PagoLink Ecuador. Todos los derechos reservados.</p>
+    <!-- Footer text -->
+    <div class="text-center" style="margin-top: var(--space-8);">
+        <p style="color: var(--gray-400); font-size: var(--font-size-xs);">
+            &copy; 2026 PagoLink Ecuador. Todos los derechos reservados.
+        </p>
     </div>
-</div>
+</section>
 
 <!-- Script de Validaciones Adicionales Datafast (Requerido) -->
 <script type="text/javascript" src="https://www.datafast.com.ec/js/dfAdditionalValidations1.js"></script>
 
-</body>
-</html>
+<style>
+    /* Datafast widget styles — minimal overrides for design-system compatibility */
+    .wpwl-form-card {
+        background: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .wpwl-button-pay {
+        background-color: var(--teal) !important;
+        border-color: var(--teal) !important;
+        width: 100% !important;
+    }
+</style>
+{% endblock %}

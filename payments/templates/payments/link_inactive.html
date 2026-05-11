@@ -4,27 +4,35 @@
 {% block title %}Link Inactivo - PagoLink{% endblock %}
 
 {% block content %}
-<div class="container py-5 mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 text-center">
-            <div class="card shadow-lg border-0 rounded-lg">
-                <div class="card-body p-5">
-                    <div class="mb-4">
-                        <i class="fas fa-exclamation-triangle fa-5x text-warning"></i>
-                    </div>
-                    <h2 class="font-weight-bold">Este link ya no está disponible</h2>
-                    <p class="text-muted lead mb-4">
-                        El enlace de pago al que intentas acceder ha expirado, ya ha sido pagado (si era de un solo uso) o ha sido desactivado por el vendedor.
-                    </p>
-                    <div class="alert alert-secondary py-2 small">
-                        <strong>Descripción:</strong> {{ link.description }}
-                    </div>
-                    <hr>
-                    <p>Si crees que esto es un error, por favor contacta al comercio que te envió el link.</p>
-                    <a href="{% url 'landing:index' %}" class="btn btn-primary btn-lg mt-3">Ir al inicio</a>
-                </div>
-            </div>
+<section class="section-container sm" style="padding-top: 120px;">
+    <div class="card-modern text-center" style="max-width: 540px; margin: 0 auto;">
+        <!-- Warning Icon -->
+        <div style="margin-bottom: var(--space-5);">
+            <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: var(--warning);"></i>
         </div>
+
+        <h2 style="color: var(--navy-900); font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); margin-bottom: var(--space-4);">
+            Este link ya no está disponible
+        </h2>
+
+        <p style="color: var(--gray-500); font-size: var(--font-size-lg); line-height: var(--line-height); margin-bottom: var(--space-6);">
+            El enlace de pago al que intentas acceder ha expirado, ya ha sido pagado (si era de un solo uso) o ha sido desactivado por el vendedor.
+        </p>
+
+        <div style="background: var(--gray-100); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6);">
+            <span style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm); color: var(--gray-600);">Descripción:</span>
+            <span style="font-size: var(--font-size-sm); color: var(--gray-700); margin-left: var(--space-1);">{{ link.description }}</span>
+        </div>
+
+        <hr style="border-color: var(--gray-200); margin: var(--space-5) 0;">
+
+        <p style="color: var(--gray-400); font-size: var(--font-size-sm); margin-bottom: var(--space-5);">
+            Si crees que esto es un error, por favor contacta al comercio que te envió el link.
+        </p>
+
+        <a href="{% url 'landing:index' %}" class="btn-secondary" style="justify-content: center;">
+            <i class="fas fa-home mr-2"></i> Ir al inicio
+        </a>
     </div>
-</div>
+</section>
 {% endblock %}

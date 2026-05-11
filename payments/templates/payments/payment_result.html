@@ -1,54 +1,89 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultado del Pago - PagoLink</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/css/adminlte.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        body { background-color: #f4f6f9; }
-        .result-container { max-width: 500px; margin: 80px auto; }
-        .result-card { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
-        .icon-success { color: #28a745; font-size: 60px; margin-bottom: 20px; }
-        .icon-error { color: #dc3545; font-size: 60px; margin-bottom: 20px; }
-    </style>
-</head>
-<body>
+{% extends 'landing/layouts/base.html' %}
+{% load static %}
 
-<div class="result-container">
-    <div class="result-card">
+{% block title %}Resultado del Pago{% endblock %}
+
+{% block content %}
+<section class="section-container sm" style="padding-top: 100px;">
+    <div class="card-modern" style="text-align: center;">
         {% if success %}
-            <i class="fas fa-check-circle icon-success"></i>
-            <h2 class="text-success">¡Pago Exitoso!</h2>
-            <p class="lead">Gracias por tu compra. Tu pago ha sido procesado correctamente.</p>
-            <div class="alert alert-light border text-left mt-4">
-                <p class="mb-1 small text-muted">Resumen:</p>
-                <strong>Concepto:</strong> {{ payment.description }}<br>
-                <strong>Monto:</strong> ${{ payment.amount }}<br>
-                <strong>ID Transacción:</strong> <small>{{ payment.transaction_id }}</small>
+            <!-- Success Icon -->
+            <div style="margin-bottom: var(--space-4);">
+                <i class="fas fa-check-circle" style="font-size: 64px; color: var(--success);"></i>
+            </div>
+            <h2 style="color: var(--success); font-size: var(--font-size-3xl); margin-bottom: var(--space-3);">
+                ¡Pago Exitoso!
+            </h2>
+            <p style="color: var(--gray-500); font-size: var(--font-size-lg); margin-bottom: var(--space-6);">
+                Gracias por tu compra. Tu pago ha sido procesado correctamente.
+            </p>
+
+            <!-- Transaction Details -->
+            <div style="background: var(--gray-50); border-radius: var(--radius-sm); padding: var(--space-5); text-align: left; margin-bottom: var(--space-6); border: 1px solid var(--gray-200);">
+                <p style="font-size: var(--font-size-xs); color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-3); font-weight: var(--font-weight-semibold);">
+                    Resumen
+                </p>
+                <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2);">
+                    <span style="font-weight: var(--font-weight-medium); color: var(--gray-600);">Concepto:</span>
+                    <span style="color: var(--gray-800);">{{ payment.description }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2);">
+                    <span style="font-weight: var(--font-weight-medium); color: var(--gray-600);">Monto:</span>
+                    <span style="font-weight: var(--font-weight-semibold); color: var(--navy-900);">${{ payment.amount }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0;">
+                    <span style="font-weight: var(--font-weight-medium); color: var(--gray-600);">ID Transacción:</span>
+                    <span style="color: var(--gray-500); font-size: var(--font-size-sm);">{{ payment.transaction_id }}</span>
+                </div>
             </div>
         {% else %}
-            <i class="fas fa-times-circle icon-error"></i>
-            <h2 class="text-danger">Pago Fallido</h2>
-            <p class="lead">Lo sentimos, no pudimos procesar tu pago en este momento.</p>
-            <div class="alert alert-danger mt-4">
-                <strong>Motivo:</strong> {{ error_msg|default:"La transacción fue declinada por la entidad financiera." }}
+            <!-- Failure Icon -->
+            <div style="margin-bottom: var(--space-4);">
+                <i class="fas fa-times-circle" style="font-size: 64px; color: var(--danger);"></i>
             </div>
-            <p class="text-muted small">Por favor, verifica los datos de tu tarjeta e intenta nuevamente.</p>
+            <h2 style="color: var(--danger); font-size: var(--font-size-3xl); margin-bottom: var(--space-3);">
+                Pago Fallido
+            </h2>
+            <p style="color: var(--gray-500); font-size: var(--font-size-lg); margin-bottom: var(--space-6);">
+                Lo sentimos, no pudimos procesar tu pago en este momento.
+            </p>
+
+            <!-- Error Details -->
+            <div style="background: var(--danger-light); border-radius: var(--radius-sm); padding: var(--space-5); margin-bottom: var(--space-6); border: 1px solid rgba(239, 68, 68, 0.15);">
+                <p style="color: var(--danger); font-weight: var(--font-weight-medium); margin-bottom: var(--space-2);">
+                    Motivo:
+                </p>
+                <p style="color: var(--gray-700); margin: 0;">
+                    {{ error_msg|default:"La transacción fue declinada por la entidad financiera." }}
+                </p>
+            </div>
+
+            <p style="color: var(--gray-400); font-size: var(--font-size-sm); margin-bottom: var(--space-4);">
+                Por favor, verifica los datos de tu tarjeta e intenta nuevamente.
+            </p>
         {% endif %}
 
-        <hr class="my-4">
-        <p class="text-muted small">Este es un comprobante digital generado por PagoLink.</p>
-        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm mr-2">
-            <i class="fas fa-print"></i> Imprimir
-        </button>
-    </div>
-    
-    <div class="text-center mt-4">
-        <p class="text-muted small">&copy; 2026 PagoLink Ecuador.</p>
-    </div>
-</div>
+        <hr style="border-color: var(--gray-200); margin: var(--space-5) 0;">
 
-</body>
-</html>
+        <p style="color: var(--gray-400); font-size: var(--font-size-xs); margin-bottom: var(--space-4);">
+            Este es un comprobante digital generado por PagoLink.
+        </p>
+
+        <div style="display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap;">
+            <button onclick="window.print()" class="btn-secondary" style="font-size: var(--font-size-sm); padding: 8px 20px;">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+            <a href="{% url 'landing:index' %}" class="btn-secondary" style="font-size: var(--font-size-sm); padding: 8px 20px;">
+                <i class="fas fa-home"></i> Volver al inicio
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center" style="margin-top: var(--space-8);">
+        <p style="color: var(--gray-400); font-size: var(--font-size-xs);">
+            &copy; 2026 PagoLink Ecuador.
+        </p>
+    </div>
+</section>
+{% endblock %}
