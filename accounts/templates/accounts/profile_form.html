@@ -3,71 +3,84 @@
 {% block title %}Mi Perfil - PagoLink{% endblock %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Editar Perfil</h1>
-            </div>
-        </div>
-    </div>
+
+<!-- Page Header -->
+<div class="mb-6">
+    <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--navy-900);">
+        <i class="fas fa-user-cog" style="color: var(--teal); margin-right: var(--space-2);"></i>
+        Editar Perfil
+    </h1>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-8 offset-md-2">
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-user-cog mr-1"></i> Información de tu cuenta</h3>
-                    </div>
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Nombres</label>
-                                        {{ form.firstname }}
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Apellidos</label>
-                                        {{ form.lastname }}
-                                    </div>
-                                </div>
-                            </div>
+<div style="max-width: 700px; margin: 0 auto;">
 
-                            <div class="form-group">
-                                <label>Correo Electrónico (No editable)</label>
-                                {{ form.email }}
-                            </div>
+    <!-- Profile Form Card -->
+    <div class="card-modern">
+        <form method="post">
+            {% csrf_token %}
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Identificación (No editable)</label>
-                                        {{ form.identification }}
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Teléfono Celular</label>
-                                        {{ form.phone }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card-footer text-right">
-                            <a href="{% url 'dashboard:dashboard' %}" class="btn btn-default">Cancelar</a>
-                            <button type="submit" class="btn btn-primary">Actualizar Datos</button>
-                        </div>
-                    </form>
+            <!-- Names row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-2);">
+                        Nombres
+                    </label>
+                    {{ form.firstname }}
+                </div>
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-2);">
+                        Apellidos
+                    </label>
+                    {{ form.lastname }}
                 </div>
             </div>
-        </div>
+
+            <!-- Email -->
+            <div style="margin-bottom: var(--space-4);">
+                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-2);">
+                    Correo Electrónico (No editable)
+                </label>
+                {{ form.email }}
+            </div>
+
+            <!-- Identification + Phone row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-2);">
+                        Identificación (No editable)
+                    </label>
+                    {{ form.identification }}
+                </div>
+                <div>
+                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-2);">
+                        Teléfono Celular
+                    </label>
+                    {{ form.phone }}
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div style="display: flex; justify-content: flex-end; gap: var(--space-3); border-top: 1px solid var(--gray-200); padding-top: var(--space-6);">
+                <a href="{% url 'dashboard:dashboard' %}" class="btn-secondary" style="padding: 10px 24px; font-size: var(--font-size-sm);">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-primary-auth" style="padding: 12px 32px; font-size: var(--font-size-sm);">
+                    <i class="fas fa-save" style="margin-right: var(--space-2);"></i>
+                    Actualizar Datos
+                </button>
+            </div>
+        </form>
     </div>
-</section>
+
+</div>
+
+<!-- Responsive: stack form columns on mobile -->
+<style>
+    @media (max-width: 576px) {
+        div[style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+
 {% endblock %}

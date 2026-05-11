@@ -1,119 +1,110 @@
-<aside class="main-sidebar sidebar-dark-primary elevation-4">
-  <!-- Brand Logo -->
-  <a href="{% url 'dashboard:dashboard' %}" class="brand-link">
-    <span class="brand-text font-weight-light ml-3"><strong>PagoLink</strong> Express</span>
-  </a>
+<!-- Sidebar Brand -->
+<div class="sidebar-brand">
+    <i class="fas fa-credit-card sidebar-brand-icon"></i>
+    <span class="sidebar-brand-text">PagoLink</span>
+</div>
 
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <!-- Sidebar user panel -->
-    <div class="user-panel mt-3 pb-3 mb-3 d-flex">
-      <div class="image">
-        <i class="fas fa-user-circle fa-2x text-light"></i>
-      </div>
-      <div class="info">
-        <a href="#" class="d-block">{{ request.user.get_full_name|default:request.user.username }}</a>
-      </div>
-    </div>
+<!-- Sidebar User Info -->
+<div class="sidebar-user">
+    <i class="fas fa-user-circle"></i>
+    <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+</div>
 
-    <!-- Sidebar Menu -->
-    <nav class="mt-2">
-      <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-        
-        <li class="nav-header">PRINCIPAL</li>
-        <li class="nav-item">
-          <a href="{% url 'dashboard:dashboard' %}" class="nav-link">
-            <i class="nav-icon fas fa-tachometer-alt"></i>
-            <p>Dashboard</p>
-          </a>
+<!-- Sidebar Navigation -->
+<nav class="sidebar-nav">
+    <ul class="sidebar-menu">
+
+        <li class="sidebar-section-title">PRINCIPAL</li>
+        <li class="sidebar-item">
+            <a href="{% url 'dashboard:dashboard' %}" class="sidebar-link active">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
         </li>
 
-        <li class="nav-header">VENTAS Y COBROS</li>
-        <li class="nav-item">
-          <a href="{% url 'payments:link_list' %}" class="nav-link">
-            <i class="nav-icon fas fa-link"></i>
-            <p>Mis Links de Pago</p>
-          </a>
+        <li class="sidebar-section-title">VENTAS Y COBROS</li>
+        <li class="sidebar-item">
+            <a href="{% url 'payments:link_list' %}" class="sidebar-link">
+                <i class="fas fa-link"></i>
+                <span>Mis Links de Pago</span>
+            </a>
         </li>
-        <li class="nav-item">
-          <a href="{% url 'payments:link_create' %}" class="nav-link text-success">
-            <i class="nav-icon fas fa-plus-circle"></i>
-            <p>Generar Nuevo Link</p>
-          </a>
+        <li class="sidebar-item">
+            <a href="{% url 'payments:link_create' %}" class="sidebar-link sidebar-link-teal">
+                <i class="fas fa-plus-circle"></i>
+                <span>Generar Nuevo Link</span>
+            </a>
         </li>
-        <li class="nav-item">
-          <a href="{% url 'payments:payment_history' %}" class="nav-link">
-            <i class="nav-icon fas fa-history"></i>
-            <p>Historial de Ventas</p>
-          </a>
+        <li class="sidebar-item">
+            <a href="{% url 'payments:payment_history' %}" class="sidebar-link">
+                <i class="fas fa-history"></i>
+                <span>Historial de Ventas</span>
+            </a>
         </li>
-        <li class="nav-item">
-          <a href="{% url 'payments:refund_list' %}" class="nav-link">
-            <i class="nav-icon fas fa-undo"></i>
-            <p>Reembolsos</p>
-          </a>
-        </li>
-
-        <li class="nav-header">FINANZAS Y RETIROS</li>
-        <li class="nav-item">
-          <a href="{% url 'banking:disbursement_list' %}" class="nav-link">
-            <i class="nav-icon fas fa-wallet"></i>
-            <p>Mis Retiros</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="{% url 'banking:disbursement_create' %}" class="nav-link text-info">
-            <i class="nav-icon fas fa-hand-holding-usd"></i>
-            <p>Solicitar Retiro</p>
-          </a>
+        <li class="sidebar-item">
+            <a href="{% url 'payments:refund_list' %}" class="sidebar-link">
+                <i class="fas fa-undo"></i>
+                <span>Reembolsos</span>
+            </a>
         </li>
 
-        <li class="nav-header">CONFIGURACIÓN</li>
-        <li class="nav-item">
-          <a href="{% url 'banking:config' %}" class="nav-link">
-            <i class="nav-icon fas fa-university"></i>
-            <p>Datos Bancarios</p>
-          </a>
+        <li class="sidebar-section-title">FINANZAS Y RETIROS</li>
+        <li class="sidebar-item">
+            <a href="{% url 'banking:disbursement_list' %}" class="sidebar-link">
+                <i class="fas fa-wallet"></i>
+                <span>Mis Retiros</span>
+            </a>
         </li>
-        <li class="nav-item">
-          <a href="{% url 'dashboard:contract' %}" class="nav-link">
-            <i class="nav-icon fas fa-file-contract"></i>
-            <p>Contrato Legal</p>
-          </a>
+        <li class="sidebar-item">
+            <a href="{% url 'banking:disbursement_create' %}" class="sidebar-link sidebar-link-teal">
+                <i class="fas fa-hand-holding-usd"></i>
+                <span>Solicitar Retiro</span>
+            </a>
         </li>
 
-        <li class="nav-header">CUENTA</li>
-        <li class="nav-item">
-          <a href="{% url 'dashboard:logout' %}" class="nav-link text-danger">
-            <i class="nav-icon fas fa-sign-out-alt"></i>
-            <p>Cerrar Sesión</p>
-          </a>
+        <li class="sidebar-section-title">CONFIGURACIÓN</li>
+        <li class="sidebar-item">
+            <a href="{% url 'banking:config' %}" class="sidebar-link">
+                <i class="fas fa-university"></i>
+                <span>Datos Bancarios</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'dashboard:contract' %}" class="sidebar-link">
+                <i class="fas fa-file-contract"></i>
+                <span>Contrato Legal</span>
+            </a>
+        </li>
+
+        <li class="sidebar-section-title">CUENTA</li>
+        <li class="sidebar-item">
+            <a href="{% url 'dashboard:logout' %}" class="sidebar-link sidebar-link-danger">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Cerrar Sesión</span>
+            </a>
         </li>
 
         {% if request.user.customuser.is_admin_role %}
-        <li class="nav-header text-warning">ADMINISTRACIÓN</li>
-        <li class="nav-item">
-          <a href="{% url 'banking:bank_list' %}" class="nav-link">
-            <i class="nav-icon fas fa-university"></i>
-            <p>Gestión de Bancos</p>
-          </a>
+        <li class="sidebar-section-title sidebar-section-title-warning">ADMINISTRACIÓN</li>
+        <li class="sidebar-item">
+            <a href="{% url 'banking:bank_list' %}" class="sidebar-link">
+                <i class="fas fa-university"></i>
+                <span>Gestión de Bancos</span>
+            </a>
         </li>
-        <li class="nav-item">
-          <a href="{% url 'payments:admin_refund_list' %}" class="nav-link">
-            <i class="nav-icon fas fa-tools"></i>
-            <p>Aprobar Reembolsos</p>
-          </a>
+        <li class="sidebar-item">
+            <a href="{% url 'payments:admin_refund_list' %}" class="sidebar-link">
+                <i class="fas fa-tools"></i>
+                <span>Aprobar Reembolsos</span>
+            </a>
         </li>
-        <li class="nav-item">
-          <a href="{% url 'banking:admin_disbursement_list' %}" class="nav-link">
-            <i class="nav-icon fas fa-cash-register"></i>
-            <p>Aprobar Desembolsos</p>
-          </a>
+        <li class="sidebar-item">
+            <a href="{% url 'banking:admin_disbursement_list' %}" class="sidebar-link">
+                <i class="fas fa-cash-register"></i>
+                <span>Aprobar Desembolsos</span>
+            </a>
         </li>
         {% endif %}
-      </ul>
-    </nav>
-    <!-- /.sidebar-menu -->
-  </div>
-  <!-- /.sidebar -->
-</aside>
+
+    </ul>
+</nav>

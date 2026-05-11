@@ -3,117 +3,127 @@
 {% block title %}Dashboard - PagoLink{% endblock %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Resumen General</h1>
-            </div>
+
+<!-- Page Header -->
+<div class="mb-6">
+    <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--navy-900);">Resumen General</h1>
+</div>
+
+<!-- Stats Row: card-stat components -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
+    
+    <!-- Saldo Disponible -->
+    <div class="card-stat">
+        <div class="card-stat-icon" style="background: var(--teal);">
+            <i class="fas fa-wallet" style="color: var(--white);"></i>
+        </div>
+        <div class="card-stat-info">
+            <span class="card-stat-value">${{ available_balance|default:0|floatformat:2 }}</span>
+            <span class="card-stat-label">Saldo Disponible</span>
+        </div>
+    </div>
+
+    <!-- Ventas de Hoy -->
+    <div class="card-stat">
+        <div class="card-stat-icon" style="background: var(--navy-600);">
+            <i class="fas fa-chart-line" style="color: var(--white);"></i>
+        </div>
+        <div class="card-stat-info">
+            <span class="card-stat-value">${{ daily_sales|default:0|floatformat:2 }}</span>
+            <span class="card-stat-label">Ventas de Hoy</span>
+        </div>
+    </div>
+
+    <!-- Total Recaudado (Histórico) -->
+    <div class="card-stat">
+        <div class="card-stat-icon" style="background: var(--success);">
+            <i class="fas fa-shopping-cart" style="color: var(--white);"></i>
+        </div>
+        <div class="card-stat-info">
+            <span class="card-stat-value">${{ total_sales|default:0|floatformat:2 }}</span>
+            <span class="card-stat-label">Total Recaudado (Histórico)</span>
+        </div>
+    </div>
+
+    <!-- Links Generados -->
+    <div class="card-stat">
+        <div class="card-stat-icon" style="background: var(--navy-800);">
+            <i class="fas fa-link" style="color: var(--white);"></i>
+        </div>
+        <div class="card-stat-info">
+            <span class="card-stat-value">{{ links_count|default:0 }}</span>
+            <span class="card-stat-label">Links Generados</span>
+        </div>
+    </div>
+
+    <!-- Reembolsos Solicitados -->
+    <div class="card-stat">
+        <div class="card-stat-icon" style="background: var(--warning);">
+            <i class="fas fa-undo" style="color: var(--white);"></i>
+        </div>
+        <div class="card-stat-info">
+            <span class="card-stat-value">${{ total_refunds|default:0|floatformat:2 }}</span>
+            <span class="card-stat-label">Reembolsos Solicitados</span>
         </div>
     </div>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <!-- Fila de Small Boxes -->
-        <div class="row">
-            <!-- Saldo Disponible (NUEVO) -->
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-primary">
-                    <div class="inner">
-                        <h3>${{ available_balance|default:0|floatformat:2 }}</h3>
-                        <p>Saldo Disponible</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-wallet"></i>
-                    </div>
-                    <a href="{% url 'banking:disbursement_create' %}" class="small-box-footer">Retirar ahora <i class="fas fa-arrow-circle-right"></i></a>
-                </div>
-            </div>
+<!-- Responsive: auto-fill grid handles breakpoints naturally, no override needed -->
 
-            <!-- Ventas de Hoy (NUEVO) -->
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-info">
-                    <div class="inner">
-                        <h3>${{ daily_sales|default:0|floatformat:2 }}</h3>
-                        <p>Ventas de Hoy</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <a href="{% url 'payments:payment_history' %}" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>${{ total_sales|default:0|floatformat:2 }}</h3>
-                        <p>Total Recaudado (Histórico)</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-shopping-cart"></i>
-                    </div>
-                    <a href="{% url 'payments:payment_history' %}" class="small-box-footer">Ir a ventas <i class="fas fa-arrow-circle-right"></i></a>
-                </div>
-            </div>
-
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-warning">
-                    <div class="inner">
-                        <h3>${{ total_refunds|default:0|floatformat:2 }}</h3>
-                        <p>Reembolsos Solicitados</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-undo"></i>
-                    </div>
-                    <a href="{% url 'payments:refund_list' %}" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title">Bienvenido, {{ seller_name|default:request.user.first_name }}</h3>
-                    </div>
-                    <div class="card-body">
-                        <p>Desde este panel puedes gestionar tus cobros de forma rápida y segura. Recuerda que tus fondos serán liquidados a la cuenta bancaria configurada.</p>
-                        <div class="mt-4">
-                            <a href="{% url 'payments:link_create' %}" class="btn btn-primary mr-2">
-                                <i class="fas fa-plus mr-1"></i> Generar Link
-                            </a>
-                            <a href="{% url 'banking:config' %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-university mr-1"></i> Configurar Banco
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card card-info">
-                    <div class="card-header">
-                        <h3 class="card-title">Seguridad de Cuenta</h3>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group list-group-unbordered">
-                            <li class="list-group-item">
-                                <b>Email Verificado</b> 
-                                <span class="float-right">
-                                    {% if email_active %}<i class="fas fa-check-circle text-success"></i>{% else %}<i class="fas fa-clock text-warning"></i>{% endif %}
-                                </span>
-                            </li>
-                            <li class="list-group-item">
-                                <b>Contrato Aceptado</b> 
-                                <span class="float-right"><i class="fas fa-check-circle text-success"></i></span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+<!-- Welcome + Security row -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-6);">
+    
+    <!-- Welcome Message Card -->
+    <div class="card-modern">
+        <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-3);">
+            Bienvenido, {{ seller_name|default:request.user.first_name }}
+        </h3>
+        <p style="color: var(--gray-500); margin-bottom: var(--space-6);">
+            Desde este panel puedes gestionar tus cobros de forma rápida y segura. Recuerda que tus fondos serán liquidados a la cuenta bancaria configurada.
+        </p>
+        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+            <a href="{% url 'payments:link_create' %}" class="btn-primary-auth" style="padding: 12px 24px; font-size: var(--font-size-sm);">
+                <i class="fas fa-plus"></i> Generar Link
+            </a>
+            <a href="{% url 'banking:config' %}" class="btn-secondary" style="padding: 10px 24px; font-size: var(--font-size-sm);">
+                <i class="fas fa-university"></i> Configurar Banco
+            </a>
         </div>
     </div>
-</section>
+
+    <!-- Security Checklist Card -->
+    <div class="card-modern">
+        <h3 style="font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-4);">
+            <i class="fas fa-shield-alt text-teal" style="margin-right: var(--space-2);"></i> Seguridad de Cuenta
+        </h3>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            <li style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--gray-100);">
+                <b style="font-size: var(--font-size-sm);">Email Verificado</b>
+                <span style="font-size: 1.2rem;">
+                    {% if email_active %}
+                        <i class="fas fa-check-circle text-success"></i>
+                    {% else %}
+                        <i class="fas fa-clock text-warning"></i>
+                    {% endif %}
+                </span>
+            </li>
+            <li style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0;">
+                <b style="font-size: var(--font-size-sm);">Contrato Aceptado</b>
+                <span style="font-size: 1.2rem;">
+                    <i class="fas fa-check-circle text-success"></i>
+                </span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Responsive: stack welcome+security on mobile -->
+<style>
+    @media (max-width: 768px) {
+        div[style*="grid-template-columns: 2fr 1fr"] {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+
 {% endblock %}

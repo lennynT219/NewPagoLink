@@ -1,3 +1,656 @@
+"""Phase 2 tests: Dashboard core layout redesign (T2.1-T2.5)."""
+
+from pathlib import Path
+
+from django.conf import settings
 from django.test import TestCase
 
-# Create your tests here.
+
+def _read_template(app_name, template_path):
+    """Read a template file from an app's templates directory."""
+    return (Path(settings.BASE_DIR) / app_name / 'templates' / template_path).read_text()
+
+
+def _template_exists(app_name, template_path):
+    """Check if a template file exists."""
+    return (Path(settings.BASE_DIR) / app_name / 'templates' / template_path).exists()
+
+
+# ══════════════════════════════════════════════════════════════════════
+# T2.1: Dashboard Base Layout Redesign
+# ══════════════════════════════════════════════════════════════════════
+
+
+class DashboardBaseTemplateTests(TestCase):
+    """T2.1: Verify dashboard/layouts/base.html complete redesign."""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/layouts/base.html')
+
+    # --- RED: Preserved blocks ---
+
+    def test_base_has_doctype_and_html_lang_es(self):
+        """Base must have DOCTYPE html and html lang='es'."""
+        self.assertIn('<!DOCTYPE html>', self.content)
+        self.assertIn('lang="es"', self.content)
+
+    def test_base_preserves_title_block(self):
+        """{% block title %} must be preserved."""
+        self.assertIn('{% block title %}', self.content)
+
+    def test_base_preserves_css_block(self):
+        """{% block css %} must be preserved."""
+        self.assertIn('{% block css %}', self.content)
+
+    def test_base_preserves_content_block(self):
+        """{% block content %} must be preserved."""
+        self.assertIn('{% block content %}', self.content)
+
+    def test_base_preserves_javascript_block(self):
+        """{% block javascript %} must be preserved."""
+        self.assertIn('{% block javascript %}', self.content)
+
+    # --- RED: New design system CSS loaded ---
+
+    def test_base_loads_design_system_css(self):
+        """Must load design-system.css via static tag."""
+        self.assertIn('design-system.css', self.content,
+                      'Dashboard base must load unified design system CSS')
+
+    # --- RED: Font Awesome 5 from local plugins ---
+
+    def test_base_loads_font_awesome_5_local(self):
+        """Must load Font Awesome 5 Free from local plugins directory."""
+        self.assertIn('fontawesome-free', self.content,
+                      'Must load FA5 from plugins/fontawesome-free')
+
+    # --- RED: Legacy CSS REMOVED ---
+
+    def test_base_removes_adminlte_css(self):
+        """Must NOT load adminlte.min.css."""
+        self.assertNotIn('adminlte.min.css', self.content,
+                         'AdminLTE CSS must be removed from dashboard base')
+
+    def test_base_removes_ionicons_cdn(self):
+        """Must NOT reference Ionicons CDN."""
+        self.assertNotIn('ionicons', self.content,
+                         'Ionicons CDN must be removed')
+
+    def test_base_removes_source_sans_pro(self):
+        """Must NOT load Source Sans Pro font (replaced by Inter)."""
+        self.assertNotIn('Source+Sans+Pro', self.content,
+                         'Source Sans Pro font must be removed')
+
+    def test_base_removes_icheck_bootstrap(self):
+        """Must NOT load icheck-bootstrap.min.css."""
+        self.assertNotIn('icheck', self.content,
+                         'iCheck Bootstrap must be removed')
+
+    # --- RED: Inter font loaded ---
+
+    def test_base_loads_inter_font(self):
+        """Must load Inter font from Google Fonts."""
+        self.assertIn('Inter', self.content,
+                      'Dashboard base must load Inter font')
+
+    # --- RED: Navbar brand and structure ---
+
+    def test_base_has_brand_pagolink(self):
+        """Top navbar must have brand text 'PagoLink'."""
+        self.assertIn('PagoLink', self.content)
+
+    def test_base_has_user_dropdown(self):
+        """User dropdown with edit profile and logout URLs preserved."""
+        self.assertIn('dashboard:user-update', self.content)
+        self.assertIn('dashboard:logout', self.content)
+
+    # --- RED: Footer ---
+
+    def test_base_has_footer_copyright(self):
+        """Footer must preserve copyright with PagoLink and version."""
+        self.assertIn('Copyright', self.content)
+        self.assertIn('PagoLink', self.content)
+
+    # --- RED: Scripts retained ---
+
+    def test_base_keeps_jquery(self):
+        """jQuery must be preserved for sidebar toggle and dropdowns."""
+        self.assertIn('jquery', self.content.lower())
+
+    def test_base_keeps_bootstrap_js(self):
+        """Bootstrap JS bundle must be preserved."""
+        self.assertIn('bootstrap.bundle', self.content)
+
+    # --- RED: AdminLTE-specific removals ---
+
+    def test_base_removes_adminlte_wrapper(self):
+        """Must NOT have AdminLTE 'wrapper' class div."""
+        self.assertNotIn('class="wrapper"', self.content,
+                         'AdminLTE wrapper div must be removed')
+
+    def test_base_removes_main_header_navbar(self):
+        """Must NOT use AdminLTE main-header navbar."""
+        self.assertNotIn('main-header', self.content,
+                         'AdminLTE main-header must be removed')
+
+    def test_base_removes_content_wrapper_div(self):
+        """Must NOT have AdminLTE content-wrapper div."""
+        self.assertNotIn('content-wrapper', self.content,
+                         'AdminLTE content-wrapper must be removed')
+
+    def test_base_removes_control_sidebar(self):
+        """Must NOT have control-sidebar (unused)."""
+        self.assertNotIn('control-sidebar', self.content,
+                         'AdminLTE control-sidebar must be removed')
+
+    def test_base_removes_sidebar_mini_body_class(self):
+        """Must NOT use hold-transition sidebar-mini body class."""
+        self.assertNotIn('sidebar-mini', self.content,
+                         'AdminLTE sidebar-mini body class must be removed')
+
+    def test_base_removes_adminlte_js(self):
+        """Must NOT load adminlte.min.js."""
+        self.assertNotIn('adminlte.min.js', self.content,
+                         'AdminLTE JS must be removed')
+
+    def test_base_removes_adminlte_logo_image(self):
+        """Must NOT reference AdminLTELogo.png."""
+        self.assertNotIn('AdminLTELogo', self.content,
+                         'AdminLTE logo image must be removed')
+
+    # --- RED: Sidebar include ---
+
+    def test_base_includes_sidebar(self):
+        """Must include dashboard/sidebar.html."""
+        self.assertIn("dashboard/sidebar.html", self.content,
+                      'Sidebar include must reference dashboard/sidebar.html')
+
+    # --- TRIANGULATE: Navbar structure verification ---
+
+    def test_base_navbar_has_fixed_positioning(self):
+        """Top navbar must be fixed with navy background."""
+        self.assertIn('position: fixed', self.content,
+                      'Navbar must have fixed positioning')
+        self.assertIn('navy-900', self.content,
+                      'Navbar must use navy-900 background')
+
+    def test_base_dropdown_preserves_bootstrap_data_attrs(self):
+        """Dropdown must use Bootstrap data-toggle for JS functionality."""
+        self.assertIn('data-toggle="dropdown"', self.content,
+                      'Dropdown must preserve Bootstrap data attributes')
+
+    def test_base_sidebar_container_has_dashboard_sidebar_class(self):
+        """Sidebar must be wrapped in dashboard-sidebar container class."""
+        self.assertIn('dashboard-sidebar', self.content,
+                      'Sidebar container must use dashboard-sidebar class')
+
+    def test_base_content_area_has_dashboard_content_class(self):
+        """Content area must use dashboard-content wrapper class."""
+        self.assertIn('dashboard-content', self.content,
+                      'Content area must use dashboard-content class')
+
+
+# ══════════════════════════════════════════════════════════════════════
+# T2.2: Sidebar Redesign
+# ══════════════════════════════════════════════════════════════════════
+
+
+class DashboardSidebarTemplateTests(TestCase):
+    """T2.2: Verify dashboard/sidebar.html redesign."""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/sidebar.html')
+
+    # --- RED: Brand consistency ---
+
+    def test_sidebar_brand_is_pagolink_not_express(self):
+        """Brand text must be 'PagoLink', NOT 'PagoLink Express'."""
+        self.assertNotIn('PagoLink Express', self.content,
+                         'Brand must NOT say "PagoLink Express"')
+        self.assertIn('PagoLink', self.content)
+
+    # --- RED: All navigation links preserved ---
+
+    def test_sidebar_has_dashboard_link(self):
+        self.assertIn('dashboard:dashboard', self.content)
+
+    def test_sidebar_has_link_list(self):
+        self.assertIn('payments:link_list', self.content)
+
+    def test_sidebar_has_link_create(self):
+        self.assertIn('payments:link_create', self.content)
+
+    def test_sidebar_has_payment_history(self):
+        self.assertIn('payments:payment_history', self.content)
+
+    def test_sidebar_has_refund_list(self):
+        self.assertIn('payments:refund_list', self.content)
+
+    def test_sidebar_has_disbursement_list(self):
+        self.assertIn('banking:disbursement_list', self.content)
+
+    def test_sidebar_has_disbursement_create(self):
+        self.assertIn('banking:disbursement_create', self.content)
+
+    def test_sidebar_has_bank_config(self):
+        self.assertIn('banking:config', self.content)
+
+    def test_sidebar_has_contract(self):
+        self.assertIn('dashboard:contract', self.content)
+
+    def test_sidebar_has_logout(self):
+        self.assertIn('dashboard:logout', self.content)
+
+    # --- RED: Navigation sections preserved ---
+
+    def test_sidebar_has_principal_section(self):
+        self.assertIn('PRINCIPAL', self.content)
+
+    def test_sidebar_has_ventas_section(self):
+        self.assertIn('VENTAS Y COBROS', self.content)
+
+    def test_sidebar_has_finanzas_section(self):
+        self.assertIn('FINANZAS Y RETIROS', self.content)
+
+    def test_sidebar_has_configuracion_section(self):
+        self.assertIn('CONFIGURACIÓN', self.content)
+
+    def test_sidebar_has_cuenta_section(self):
+        self.assertIn('CUENTA', self.content)
+
+    def test_sidebar_has_admin_section(self):
+        self.assertIn('ADMINISTRACIÓN', self.content)
+
+    # --- RED: Admin role conditional preserved ---
+
+    def test_sidebar_preserves_admin_conditional(self):
+        """Admin section must remain conditional on is_admin_role."""
+        self.assertIn('is_admin_role', self.content)
+
+    # --- RED: AdminLTE sidebar classes removed ---
+
+    def test_sidebar_removes_main_sidebar_class(self):
+        """Must NOT use AdminLTE main-sidebar class."""
+        self.assertNotIn('main-sidebar', self.content,
+                         'AdminLTE main-sidebar class must be removed')
+
+    def test_sidebar_removes_nav_sidebar_class(self):
+        """Must NOT use AdminLTE nav-sidebar class."""
+        self.assertNotIn('nav-sidebar', self.content,
+                         'AdminLTE nav-sidebar class must be removed')
+
+    # --- RED: Icons preserved as FA5 ---
+
+    def test_sidebar_has_icons(self):
+        """Navigation must have FA5 icon classes."""
+        self.assertIn('fas fa-', self.content,
+                      'Sidebar must use Font Awesome 5 icons')
+
+    # --- TRIANGULATE: Special link styles ---
+
+    def test_sidebar_link_create_has_teal_accent(self):
+        """Link create item must use teal accent class."""
+        self.assertIn('sidebar-link-teal', self.content,
+                      'Link create must have teal accent styling')
+
+    def test_sidebar_logout_has_danger_accent(self):
+        """Logout item must use danger/red accent class."""
+        self.assertIn('sidebar-link-danger', self.content,
+                      'Logout must have danger accent styling')
+
+    def test_sidebar_admin_conditional_uses_customuser_path(self):
+        """Admin role check must use request.user.customuser.is_admin_role."""
+        self.assertIn('customuser.is_admin_role', self.content,
+                      'Admin conditional must check via customuser relation')
+
+    def test_sidebar_brand_uses_sidebar_brand_class(self):
+        """Brand section must use sidebar-brand class (not AdminLTE brand-link)."""
+        self.assertIn('sidebar-brand', self.content,
+                      'Brand must use sidebar-brand class')
+        self.assertNotIn('brand-link', self.content,
+                         'AdminLTE brand-link class must be removed')
+
+    def test_sidebar_links_use_sidebar_link_class(self):
+        """Navigation links must use sidebar-link class (not AdminLTE nav-link)."""
+        self.assertIn('sidebar-link', self.content,
+                      'Links must use sidebar-link class')
+
+
+# ══════════════════════════════════════════════════════════════════════
+# T2.3: Dashboard Home Redesign + Duplicate Deletion
+# ══════════════════════════════════════════════════════════════════════
+
+
+class DashboardHomeTemplateTests(TestCase):
+    """T2.3: Verify dashboard.html redesign and duplicate cleanup."""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/dashboard.html')
+
+    # --- RED: Extends correct base ---
+
+    def test_dashboard_extends_base(self):
+        """Must extend dashboard/layouts/base.html."""
+        self.assertIn("dashboard/layouts/base.html", self.content)
+
+    # --- RED: Title block ---
+
+    def test_dashboard_title_block(self):
+        """Must define title block."""
+        self.assertIn('{% block title %}', self.content)
+
+    # --- RED: Stat cards use card-stat ---
+
+    def test_dashboard_uses_card_stat(self):
+        """Stats must use card-stat class, not small-box."""
+        self.assertIn('card-stat', self.content,
+                      'Dashboard must use card-stat components')
+        self.assertNotIn('small-box', self.content,
+                         'AdminLTE small-box must be removed')
+
+    # --- RED: Context variables preserved ---
+
+    def test_dashboard_has_total_sales(self):
+        self.assertIn('total_sales', self.content)
+
+    def test_dashboard_has_daily_sales(self):
+        self.assertIn('daily_sales', self.content)
+
+    def test_dashboard_has_links_count(self):
+        self.assertIn('links_count', self.content)
+
+    def test_dashboard_has_available_balance(self):
+        self.assertIn('available_balance', self.content)
+
+    def test_dashboard_has_total_refunds(self):
+        self.assertIn('total_refunds', self.content)
+
+    # --- RED: Welcome message and security checklist ---
+
+    def test_dashboard_welcome_message_preserved(self):
+        """Welcome message must be preserved."""
+        self.assertIn('Bienvenido', self.content)
+
+    def test_dashboard_security_checklist_preserved(self):
+        """Security checklist with email_active check must be preserved."""
+        self.assertIn('email_active', self.content)
+        self.assertIn('Seguridad', self.content)
+
+    # --- RED: CTA buttons preserved ---
+
+    def test_dashboard_cta_buttons_preserved(self):
+        """Crear Link de Pago and Ver Mis Links / banking config preserved."""
+        self.assertIn('payments:link_create', self.content)
+        self.assertIn('banking:config', self.content)
+
+    # --- RED: Uses card-modern ---
+
+    def test_dashboard_uses_card_modern(self):
+        """Welcome card must use card-modern styling."""
+        self.assertIn('card-modern', self.content,
+                      'Dashboard must use card-modern for cards')
+
+    # --- TRIANGULATE: Layout structure ---
+
+    def test_dashboard_stats_grid_uses_auto_fill(self):
+        """Stat cards grid must use responsive auto-fill layout."""
+        self.assertIn('auto-fill', self.content,
+                      'Stats grid must use auto-fill for responsive layout')
+
+    def test_dashboard_welcome_card_uses_card_modern(self):
+        """Welcome message must be wrapped in card-modern (not AdminLTE card)."""
+        self.assertIn('card-modern', self.content)
+        self.assertNotIn('card-primary', self.content,
+                         'AdminLTE card-primary must be removed from dashboard')
+        self.assertNotIn('card-outline', self.content,
+                         'AdminLTE card-outline must be removed from dashboard')
+
+    def test_dashboard_button_uses_btn_primary_auth(self):
+        """CTA button must use btn-primary-auth from design system."""
+        self.assertIn('btn-primary-auth', self.content,
+                      'CTA must use btn-primary-auth')
+
+    def test_dashboard_has_five_stat_cards(self):
+        """Dashboard must render all 5 stat cards (balance, daily, total, links, refunds)."""
+        # Each card-stat div represents one metric card
+        occurrences = self.content.count('class="card-stat"')
+        self.assertEqual(occurrences, 5,
+                         f'Expected 5 card-stat components, found {occurrences}')
+
+    def test_dashboard_email_conditional_has_branches(self):
+        """email_active conditional must have both if and else branches."""
+        self.assertIn('{% if email_active %}', self.content,
+                      'Missing email_active if branch')
+        self.assertIn('{% else %}', self.content,
+                      'Missing email_active else branch')
+
+
+class DuplicateDashboardDeletionTests(TestCase):
+    """T2.3: Verify duplicate dashboard.html is deleted."""
+
+    def test_duplicate_dashboard_html_does_not_exist(self):
+        """The duplicate at dashboard/templates/dashboard.html must be DELETED."""
+        duplicate_path = (
+            Path(settings.BASE_DIR) / 'dashboard' / 'templates' / 'dashboard.html'
+        )
+        self.assertFalse(
+            duplicate_path.exists(),
+            'Duplicate dashboard.html at dashboard/templates/dashboard.html '
+            'must be deleted. Only dashboard/templates/dashboard/dashboard.html '
+            'should remain.'
+        )
+
+    def test_canonical_dashboard_html_exists(self):
+        """The canonical dashboard.html must still exist."""
+        canonical_path = (
+            Path(settings.BASE_DIR) / 'dashboard' / 'templates' / 'dashboard' / 'dashboard.html'
+        )
+        self.assertTrue(
+            canonical_path.exists(),
+            'Canonical dashboard.html must still exist'
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════
+# T2.4: Contract Page Redesign
+# ══════════════════════════════════════════════════════════════════════
+
+
+class DashboardContractTemplateTests(TestCase):
+    """T2.4: Verify dashboard/contract.html redesign."""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/contract.html')
+
+    # --- RED: Extends correct base ---
+
+    def test_contract_extends_base(self):
+        self.assertIn("dashboard/layouts/base.html", self.content)
+
+    # --- RED: Uses card-modern ---
+
+    def test_contract_uses_card_modern(self):
+        """Must use card-modern for the contract card."""
+        self.assertIn('card-modern', self.content,
+                      'Contract page must use card-modern')
+
+    # --- RED: Form preserved ---
+
+    def test_contract_has_form_with_csrf(self):
+        """Form with CSRF token and submit button must be preserved."""
+        self.assertIn('{% csrf_token %}', self.content)
+        self.assertIn('<form', self.content.lower())
+        self.assertIn('submit', self.content.lower())
+
+    def test_contract_accept_button_preserved(self):
+        """Accept button text must be preserved."""
+        self.assertIn('Acepto', self.content)
+
+    # --- RED: Legal content preserved ---
+
+    def test_contract_clausulas_preserved(self):
+        """CLÁUSULAS heading must be preserved."""
+        self.assertIn('CLÁUSULAS', self.content)
+
+    def test_contract_adrest_preserved(self):
+        """ADREST company name must be preserved."""
+        self.assertIn('ADREST', self.content)
+
+    def test_contract_vendedor_preserved(self):
+        """VENDEDOR reference must be preserved."""
+        self.assertIn('VENDEDOR', self.content)
+
+    # --- RED: Removes AdminLTE classes ---
+
+    def test_contract_removes_adminlte_card_classes(self):
+        """Must NOT use AdminLTE card classes like card-primary."""
+        self.assertNotIn('card-primary', self.content,
+                         'AdminLTE card classes must be removed')
+
+    # --- TRIANGULATE: Layout features ---
+
+    def test_contract_has_scrollable_legal_text(self):
+        """Legal text area must have scrollable overflow with max-height."""
+        self.assertIn('overflow-y', self.content,
+                      'Legal text must have overflow-y for scrolling')
+        self.assertIn('max-height', self.content,
+                      'Legal text must have max-height constraint')
+
+    def test_contract_form_uses_post_method(self):
+        """Accept form must use POST method."""
+        self.assertIn('method="post"', self.content,
+                      'Form must use POST method')
+
+    def test_contract_accept_button_uses_btn_primary_auth(self):
+        """Accept button must use btn-primary-auth."""
+        self.assertIn('btn-primary-auth', self.content,
+                      'Accept button must use btn-primary-auth')
+
+    def test_contract_has_warning_alert(self):
+        """Contract must have a warning/attention alert before legal text."""
+        self.assertIn('exclamation-triangle', self.content,
+                      'Must have warning icon')
+        self.assertIn('Atención', self.content,
+                      'Must have attention heading')
+
+    def test_contract_tariff_table_uses_table_modern(self):
+        """Tariff table must use table-modern class."""
+        self.assertIn('table-modern', self.content,
+                      'Tariff table must use table-modern')
+
+    def test_contract_title_block_preserved(self):
+        """Title block must be preserved."""
+        self.assertIn('{% block title %}', self.content)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# T2.5: Profile Form Redesign
+# ══════════════════════════════════════════════════════════════════════
+
+
+class AccountsProfileFormTemplateTests(TestCase):
+    """T2.5: Verify accounts/profile_form.html redesign."""
+
+    @property
+    def content(self):
+        return _read_template('accounts', 'accounts/profile_form.html')
+
+    # --- RED: Extends correct base ---
+
+    def test_profile_extends_dashboard_base(self):
+        self.assertIn("dashboard/layouts/base.html", self.content)
+
+    # --- RED: Uses card-modern ---
+
+    def test_profile_uses_card_modern(self):
+        """Profile form must use card-modern wrapper."""
+        self.assertIn('card-modern', self.content,
+                      'Profile form must use card-modern')
+
+    # --- RED: Form fields preserved ---
+
+    def test_profile_has_firstname_field(self):
+        self.assertIn('firstname', self.content)
+
+    def test_profile_has_lastname_field(self):
+        self.assertIn('lastname', self.content)
+
+    def test_profile_has_email_field(self):
+        self.assertIn('form.email', self.content)
+
+    def test_profile_has_identification_field(self):
+        self.assertIn('form.identification', self.content)
+
+    def test_profile_has_phone_field(self):
+        self.assertIn('form.phone', self.content)
+
+    # --- RED: CSRF and submit ---
+
+    def test_profile_has_csrf(self):
+        self.assertIn('{% csrf_token %}', self.content)
+
+    def test_profile_submit_button_preserved(self):
+        """Submit button with 'Actualizar' text must be preserved."""
+        self.assertIn('Actualizar', self.content)
+
+    def test_profile_cancel_button_preserved(self):
+        """Cancel button linking to dashboard must be preserved."""
+        self.assertIn('dashboard:dashboard', self.content)
+
+    # --- RED: Removes AdminLTE classes ---
+
+    def test_profile_removes_content_header(self):
+        """Must NOT use AdminLTE content-header class."""
+        self.assertNotIn('content-header', self.content,
+                         'AdminLTE content-header must be removed')
+
+    def test_profile_removes_adminlte_card_classes(self):
+        """Must NOT use AdminLTE card-primary, card-outline classes."""
+        self.assertNotIn('card-primary', self.content,
+                         'AdminLTE card-primary must be removed')
+        self.assertNotIn('card-outline', self.content,
+                         'AdminLTE card-outline must be removed')
+
+    # --- RED: Uses btn-primary-auth ---
+
+    def test_profile_uses_btn_primary_auth(self):
+        """Submit button must use btn-primary-auth."""
+        self.assertIn('btn-primary-auth', self.content,
+                      'Profile form must use btn-primary-auth')
+
+    # --- TRIANGULATE: Form structure and field labels ---
+
+    def test_profile_form_uses_post_method(self):
+        """Form must use POST method."""
+        self.assertIn('method="post"', self.content,
+                      'Form must use POST method')
+
+    def test_profile_form_has_field_labels(self):
+        """All form field labels must be preserved."""
+        labels = ['Nombres', 'Apellidos', 'Correo Electrónico', 'Identificación', 'Teléfono']
+        for label in labels:
+            self.assertIn(label, self.content,
+                          f'Missing field label: {label}')
+
+    def test_profile_cancel_uses_btn_secondary(self):
+        """Cancel button must use btn-secondary for consistency."""
+        self.assertIn('btn-secondary', self.content,
+                      'Cancel button must use btn-secondary')
+
+    def test_profile_title_block_preserved(self):
+        """Title block must be preserved."""
+        self.assertIn('{% block title %}', self.content)
+
+    def test_profile_form_has_exactly_five_fields(self):
+        """Profile form must render exactly 5 Django form fields (firstname, lastname, email, identification, phone)."""
+        form_field_refs = [
+            'form.firstname', 'form.lastname', 'form.email',
+            'form.identification', 'form.phone'
+        ]
+        for ref in form_field_refs:
+            self.assertIn(ref, self.content,
+                          f'Missing form field: {ref}')
