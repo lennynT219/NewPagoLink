@@ -146,3 +146,4 @@ venv.bak/
 __pypackages__/
 
 .sqls.yml
+.atl

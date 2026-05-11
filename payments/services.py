@@ -1,19 +1,20 @@
 from typing import Any, Dict, Optional
 import csv
 import io
+import logging
+
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from django.db.models import Sum
 from decimal import Decimal
 from django.db import transaction
-from django.http import HttpResponse
 from django.conf import settings
-from django.template.loader import render_to_string
-from django.core.mail import EmailMultiAlternatives
-from django.utils.html import strip_tags
 from payments.models import Link, Payment, Refund, Sale
 from accounts.models import CustomUser
+from shared.email_service import send_html_email
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_tax(amount: Decimal, include_tax: bool) -> Decimal:
@@ -30,12 +31,9 @@ def send_payment_invite(payment: Payment, req: Any) -> None:
 
   subject = f'Invitación de pago de {payment.seller.user.get_full_name()}'
   context = {'payment': payment, 'pay_url': f'{req.scheme}://{req.get_host()}/payments/pay/{payment.link.id}/?p={payment.id}'}
-  html_content = render_to_string('payments/emails/invite_email.html', context)
-  text_content = strip_tags(html_content)
-
-  email = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [payment.email])
-  email.attach_alternative(html_content, 'text/html')
-  email.send()
+  ok = send_html_email(subject, [payment.email], 'payments/emails/invite_email.html', context)
+  if not ok:
+    logger.error('Payment invite email failed for %s', payment.email)
 
 
 def send_payment_confirmation(payment: Payment) -> None:
@@ -44,12 +42,9 @@ def send_payment_confirmation(payment: Payment) -> None:
     return
 
   subject = f'Comprobante de Pago Exitoso - {payment.description}'
-  html_content = render_to_string('payments/emails/confirmation_email.html', {'payment': payment})
-  text_content = strip_tags(html_content)
-
-  email = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [payment.email])
-  email.attach_alternative(html_content, 'text/html')
-  email.send()
+  ok = send_html_email(subject, [payment.email], 'payments/emails/confirmation_email.html', {'payment': payment})
+  if not ok:
+    logger.error('Payment confirmation email failed for %s', payment.email)
 
 
 @transaction.atomic
@@ -128,7 +123,7 @@ def process_payment_result(payment_id: int, result_data: Dict[str, Any]) -> Paym
     try:
       send_payment_confirmation(payment)
     except Exception as e:
-      print(f'Error enviando confirmación: {e}')
+      logger.error('Error sending payment confirmation for payment %s: %s', payment_id, e)
   else:
     payment.status = Payment.PaymentStatus.FAILED
     payment.state = False

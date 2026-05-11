@@ -126,16 +126,29 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Configuración email (Gmail SMTP)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
-EMAIL_TIMEOUT = 10  # Tiempo de espera en segundos
+# ============================================================
+# EMAIL CONFIGURATION (Resend via django-anymail)
+# ============================================================
+# Environment-aware backend selection:
+#   DEBUG=True  → console backend (prints to stdout, zero-setup)
+#   DEBUG=False → Resend API via anymail (production)
+#   EMAIL_BACKEND_MODE=console → override to console regardless of DEBUG
+
+EMAIL_BACKEND_MODE = env('EMAIL_BACKEND_MODE', default=None)
+
+if EMAIL_BACKEND_MODE == 'console' or DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+    ANYMAIL = {
+        'RESEND_API_KEY': env('RESEND_API_KEY'),
+    }
+
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='PagoLink <noreply@tudominio.com>')
+
+# Register anymail as an installed app (idempotent)
+if 'anymail' not in INSTALLED_APPS:
+    INSTALLED_APPS.append('anymail')
 
 # Configuración Datafast
 DATAFAST_BASE_URL = env('DATAFAST_BASE_URL', default='https://eu-test.oppwa.com/v1/')

@@ -1,14 +1,16 @@
 from typing import Any, Dict, Optional
+import logging
+
 from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import EmailMessage
-from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.urls import reverse_lazy
 from django.contrib.gis.geoip2 import GeoIP2
 from accounts.models import CustomUser
 from accounts.tokens import account_activation_token
+
+logger = logging.getLogger(__name__)
 
 
 def create_user(form_data: Dict[str, Any]) -> User:
@@ -25,36 +27,22 @@ def create_user(form_data: Dict[str, Any]) -> User:
   return user
 
 
-from django.core.mail import EmailMultiAlternatives
-from django.utils.html import strip_tags
+from shared.email_service import send_html_email
+
 
 def send_activation_email(user: User, req: Any) -> None:
-  """Construye y envía un email de activación en formato HTML."""
+  """Construye y envía un email de activación en formato HTML usando el servicio compartido."""
   current_site = get_current_site(req)
-  mail_subject = 'Active su cuenta de PagoLink'
-  html_content = render_to_string(
-    'dashboard/activation_email.html',
-    {
-      'user': user,
-      'domain': current_site.domain,
-      'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-      'token': account_activation_token.make_token(user),
-    },
-  )
-  text_content = strip_tags(html_content) # Versión en texto plano para clientes que no soportan HTML
-  
-  email = EmailMultiAlternatives(
-    mail_subject, 
-    text_content, 
-    'PagoLink <pagoslinkexpress@gmail.com>', 
-    [user.email]
-  )
-  email.attach_alternative(html_content, "text/html")
-  
-  try:
-    email.send()
-  except Exception as e:
-    print(f'Error al enviar el email de activación: {e}')
+  subject = 'Active su cuenta de PagoLink'
+  context = {
+    'user': user,
+    'domain': current_site.domain,
+    'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+    'token': account_activation_token.make_token(user),
+  }
+  ok = send_html_email(subject, [user.email], 'dashboard/activation_email.html', context)
+  if not ok:
+    logger.error('Activation email failed for %s', user.email)
 
 
 def login_redirect_url(user: User) -> str:
