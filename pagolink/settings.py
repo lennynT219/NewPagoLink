@@ -130,13 +130,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # EMAIL CONFIGURATION (Resend via django-anymail)
 # ============================================================
 # Environment-aware backend selection:
-#   DEBUG=True  → console backend (prints to stdout, zero-setup)
-#   DEBUG=False → Resend API via anymail (production)
-#   EMAIL_BACKEND_MODE=console → override to console regardless of DEBUG
+#   EMAIL_BACKEND_MODE=resend  → Resend API (even with DEBUG=True)
+#   EMAIL_BACKEND_MODE=console → console backend (prints to stdout)
+#   (unset) + DEBUG=True       → console backend (safe local dev default)
+#   (unset) + DEBUG=False      → Resend API (production default)
 
 EMAIL_BACKEND_MODE = env('EMAIL_BACKEND_MODE', default=None)
 
-if EMAIL_BACKEND_MODE == 'console' or DEBUG:
+if EMAIL_BACKEND_MODE == 'resend':
+    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+    ANYMAIL = {
+        'RESEND_API_KEY': env('RESEND_API_KEY'),
+    }
+elif EMAIL_BACKEND_MODE == 'console' or DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
@@ -144,7 +150,7 @@ else:
         'RESEND_API_KEY': env('RESEND_API_KEY'),
     }
 
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='PagoLink <noreply@tudominio.com>')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='PagoLink <noreply@pagolink.ec>')
 
 # Register anymail as an installed app (idempotent)
 if 'anymail' not in INSTALLED_APPS:
