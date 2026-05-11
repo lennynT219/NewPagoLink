@@ -25,10 +25,9 @@
             --gray-800: #1e293b;
             --white: #ffffff;
             --danger: #ef4444;
-            --radius: 12px;
-            --radius-sm: 8px;
-            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-            --transition: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+            --raidus: 12px;
+            --raidus-sm: 8px;
+            --transition: 0.45s cubic-bezier(0.25, 0.8, 0.25, 1.0);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -49,7 +48,7 @@
             display: flex;
             width: 100%;
             max-width: 960px;
-            min-height: 560px;
+            min-height: 580px;
             background: var(--white);
             border-radius: 20px;
             overflow: hidden;
@@ -60,6 +59,7 @@
         /* ── Left Brand Panel ── */
         .brand-panel {
             width: 42%;
+            min-width: 340px;
             background: linear-gradient(160deg, var(--navy-800) 0%, var(--navy-700) 40%, #132240 100%);
             display: flex;
             flex-direction: column;
@@ -70,6 +70,7 @@
             overflow: hidden;
             text-align: center;
             z-index: 2;
+            flex-shrink: 0;
         }
 
         .brand-panel::before {
@@ -142,20 +143,29 @@
             background: rgba(255,255,255,0.3);
             transition: var(--transition);
         }
-        .brand-dots span.active {
+        #auth-toggle:not(:checked) ~ .auth-card .brand-dots span:nth-child(1),
+        #auth-toggle:checked ~ .auth-card .brand-dots span:nth-child(2) {
             background: var(--teal);
             box-shadow: 0 0 12px var(--teal-glow);
             width: 24px; border-radius: 4px;
+        }
+        #auth-toggle:checked ~ .auth-card .brand-dots span:nth-child(1) {
+            background: rgba(255,255,255,0.3);
+            box-shadow: none;
+            width: 8px; border-radius: 50%;
         }
 
         /* ── Right Form Panel ── */
         .form-panel {
             width: 58%;
+            flex: 1;
+            min-width: 0;
             padding: 2.5rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
             position: relative;
+            overflow: hidden;
         }
 
         .forms-slider {
@@ -173,24 +183,28 @@
             width: 50%;
             flex-shrink: 0;
             padding-right: 2.5rem;
-            transition: opacity 0.3s ease;
+        }
+
+        .form-page form {
+            width: 100%;
         }
 
         /* ── Tab Switcher ── */
         .tab-switcher {
             display: flex;
             background: var(--gray-100);
-            border-radius: var(--radius);
+            border-radius: var(--raidus);
             padding: 4px;
             margin-bottom: 2rem;
             position: relative;
+            flex-shrink: 0;
         }
 
         .tab-btn {
             flex: 1;
             text-align: center;
             padding: 10px 16px;
-            border-radius: var(--radius-sm);
+            border-radius: var(--raidus-sm);
             font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
@@ -223,14 +237,14 @@
 
         .input-group-icon {
             position: relative;
-            margin-bottom: 1rem;
+            margin-bottom: 0.85rem;
         }
 
         .input-group-icon input {
             width: 100%;
             padding: 13px 16px 13px 44px;
             border: 2px solid var(--gray-200);
-            border-radius: var(--radius-sm);
+            border-radius: var(--raidus-sm);
             font-size: 0.92rem;
             font-family: 'Inter', sans-serif;
             transition: all 0.3s ease;
@@ -257,23 +271,18 @@
             color: var(--gray-400);
             font-size: 1rem;
             transition: color 0.3s ease;
+            pointer-events: none;
         }
 
-        .input-group-icon input:focus + i,
         .input-group-icon input:focus ~ i {
             color: var(--teal);
         }
-
-        /* fix icon ordering */
-        .input-group-icon { display: flex; align-items: center; }
-        .input-group-icon i { position: absolute; left: 16px; }
-        .input-group-icon input { padding-left: 44px; }
 
         .btn-primary-auth {
             width: 100%;
             padding: 14px;
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: var(--raidus-sm);
             font-size: 1rem;
             font-weight: 600;
             font-family: 'Inter', sans-serif;
@@ -318,7 +327,7 @@
         .alert-error {
             background: #fef2f2;
             border: 1px solid #fecaca;
-            border-radius: var(--radius-sm);
+            border-radius: var(--raidus-sm);
             padding: 12px 16px;
             margin-bottom: 1rem;
             font-size: 0.85rem;
@@ -328,46 +337,83 @@
         .alert-error ul { margin: 0; padding-left: 1.2rem; }
         .alert-error li { margin-bottom: 2px; }
 
-        /* ── Radio toggle (hidden) ── */
-        .hidden-toggle { display: none; }
+        /* ── Toggle (hidden) ── */
+        .hidden-toggle { position: absolute; opacity: 0; pointer-events: none; }
 
-        /* ── Responsive ── */
+        /* ══════════════════════════════════════════
+              RESPONSIVE — Mobile (<768px)
+           ══════════════════════════════════════════ */
         @media (max-width: 768px) {
+            body { padding: 0; align-items: flex-start; }
+
             .auth-card {
                 flex-direction: column;
-                max-width: 420px;
-                min-height: auto;
+                max-width: 100%;
+                min-height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
             }
 
+            /* Brand panel: compact header */
             .brand-panel {
                 width: 100%;
-                padding: 2rem 1.5rem;
+                min-width: unset;
+                flex-shrink: 1;
+                padding: 2rem 1.5rem 1.5rem;
+                border-radius: 0 0 24px 24px;
             }
 
-            .brand-logo { width: 44px; height: 44px; }
+            .brand-logo { width: 44px; height: 44px; margin-bottom: 0.8rem; }
+            .brand-logo i { font-size: 22px; }
             .brand-title { font-size: 1.3rem; }
-            .brand-subtitle { font-size: 0.82rem; }
+            .brand-subtitle { font-size: 0.82rem; margin-top: 0.3rem; }
             .brand-dots { margin-top: 1rem; }
 
+            /* Form panel: takes remaining space */
             .form-panel {
                 width: 100%;
+                flex: 1;
                 padding: 1.5rem;
+                overflow: hidden;
+            }
+
+            .tab-switcher { margin-bottom: 1.5rem; }
+
+            /* Slider stays horizontal for smooth animation */
+            .forms-slider {
+                width: 200%;
+                flex: 1;
             }
 
             .form-page {
-                padding-right: 0;
+                padding-right: 1.5rem;
             }
 
-            .forms-slider {
-                width: 200%;
-            }
+            .form-page h3 { font-size: 1.3rem; }
+            .input-group-icon input { padding: 12px 16px 12px 42px; font-size: 0.9rem; }
         }
 
+        /* Small phones */
         @media (max-width: 400px) {
-            body { padding: 0.5rem; }
-            .auth-card { border-radius: 16px; }
+            .brand-panel { padding: 1.5rem 1rem 1.2rem; border-radius: 0 0 20px 20px; }
+            .brand-title { font-size: 1.15rem; }
             .form-panel { padding: 1.2rem; }
-            .form-page h3 { font-size: 1.3rem; }
+            .form-page { padding-right: 1.2rem; }
+            .form-page h3 { font-size: 1.15rem; }
+            .tab-btn { font-size: 0.82rem; padding: 8px 12px; }
+            .input-group-icon input { padding: 11px 14px 11px 38px; font-size: 0.85rem; }
+            .input-group-icon i { left: 13px; font-size: 0.9rem; }
+        }
+
+        /* Landscape mobile: keep card layout */
+        @media (max-width: 900px) and (orientation: landscape) {
+            .auth-card { min-height: auto; max-width: 640px; }
+            .brand-panel { min-width: 240px; }
+            .form-panel { padding: 1.5rem; }
+            .form-page { padding-right: 1.5rem; }
+            .form-page h3 { font-size: 1.2rem; }
+            .input-group-icon { margin-bottom: 0.5rem; }
+            .input-group-icon input { padding: 10px 14px 10px 38px; }
         }
     </style>
 </head>
