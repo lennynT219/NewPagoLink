@@ -1,110 +1,113 @@
 {% extends 'dashboard/layouts/base.html' %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Mis Links de Pago</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Inicio</a></li>
-                    <li class="breadcrumb-item active">Links de Pago</li>
-                </ol>
-            </div>
-        </div>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-6">
+    <div>
+        <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--navy-900);margin:0;">Mis Links de Pago</h1>
+        <p style="color:var(--gray-500);font-size:var(--font-size-sm);margin:0;">
+            <span style="color:var(--gray-400);">Inicio</span> &rsaquo; Links de Pago
+        </p>
     </div>
+    <a href="{% url 'payments:link_create' %}" class="btn-primary-auth" style="padding:10px 20px;font-size:var(--font-size-sm);">
+        <i class="fas fa-plus"></i> Nuevo Link
+    </a>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-12">
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title">Listado de links generados</h3>
-                        <div class="card-tools">
-                            <a href="{% url 'payments:link_create' %}" class="btn btn-success btn-sm">
-                                <i class="fas fa-plus"></i> Generar nuevo link
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover text-nowrap">
-                                <thead>
-                                    <tr>
-                                        <th>Descripción</th>
-                                        <th>Subtotal</th>
-                                        <th>IVA</th>
-                                        <th>Total</th>
-                                        <th>Tipo</th>
-                                        <th>Estado</th>
-                                        <th>Fecha</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for link in links %}
-                                    <tr>
-                                        <td>{{ link.description|truncatechars:30 }}</td>
-                                        <td>${{ link.subtotal }}</td>
-                                        <td>${{ link.igv }}</td>
-                                        <td><strong>${{ link.amount }}</strong></td>
-                                        <td>
-                                            {% if link.unique %}
-                                            <span class="badge bg-warning">Único</span>
-                                            {% else %}
-                                            <span class="badge bg-info">Múltiple</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if link.active %}
-                                            <span class="badge bg-success">Activo</span>
-                                            {% else %}
-                                            <span class="badge bg-danger">Inactivo</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ link.created_at|date:"d/m/Y" }}</td>
-                                        <td>
-                                            <div class="btn-group">
-                                                <a href="{% url 'payments:link_detail' pk=link.pk %}" class="btn btn-default btn-sm" title="Ver detalles">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <button type="button" class="btn btn-default btn-sm" title="Copiar Link" onclick="copyToClipboard('{{ request.scheme }}://{{ request.get_host }}{% url 'payments:link_checkout' pk=link.pk %}')">
-                                                    <i class="fas fa-copy"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="8" class="text-center py-4">
-                                            <p class="text-muted">Aún no has generado ningún link de pago.</p>
-                                            <a href="{% url 'payments:link_create' %}" class="btn btn-primary btn-sm">Generar mi primer link</a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+{% if links %}
+<!-- Links Table Card -->
+<div class="card-modern" style="padding:0;overflow:hidden;">
+    <div style="padding:var(--space-4) var(--space-6);border-bottom:1px solid var(--gray-100);">
+        <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin:0;">
+            Listado de links generados
+        </h3>
     </div>
-</section>
+    <div style="overflow-x:auto;">
+        <table class="table-modern">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Subtotal</th>
+                    <th>IVA</th>
+                    <th>Total</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for link in links %}
+                <tr>
+                    <td>{{ link.description|truncatechars:30 }}</td>
+                    <td>${{ link.subtotal }}</td>
+                    <td>${{ link.igv }}</td>
+                    <td><strong>${{ link.amount }}</strong></td>
+                    <td>
+                        {% if link.unique %}
+                        <span class="badge-status" style="background:var(--warning-light);color:var(--warning);">Único</span>
+                        {% else %}
+                        <span class="badge-status" style="background:#eff6ff;color:#3b82f6;">Múltiple</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if link.active %}
+                        <span class="badge-status success">Activo</span>
+                        {% else %}
+                        <span class="badge-status failed">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ link.created_at|date:"d/m/Y" }}</td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'payments:link_detail' pk=link.pk %}" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--radius-sm);color:var(--gray-500);transition:all var(--transition-fast);" onmouseover="this.style.background='var(--gray-100)';this.style.color='var(--navy-900)';" onmouseout="this.style.background='transparent';this.style.color='var(--gray-500)';" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <button type="button" onclick="copyToClipboard('{{ request.scheme }}://{{ request.get_host }}{% url 'payments:link_checkout' pk=link.pk %}')" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:var(--radius-sm);background:transparent;color:var(--gray-500);cursor:pointer;transition:all var(--transition-fast);" onmouseover="this.style.background='var(--gray-100)';this.style.color='var(--teal)';" onmouseout="this.style.background='transparent';this.style.color='var(--gray-500)';" title="Copiar Link">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="empty-state" style="margin-top:var(--space-8);">
+    <div class="empty-state-icon">
+        <i class="fas fa-link"></i>
+    </div>
+    <h3 class="empty-state-title">Aún no tienes links</h3>
+    <p class="empty-state-message">Genera tu primer link de pago y compártelo con tus clientes para empezar a cobrar.</p>
+    <a href="{% url 'payments:link_create' %}" class="btn-primary-auth" style="margin-top:var(--space-4);">Generar mi primer link</a>
+</div>
+{% endif %}
 
 <script>
 function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            alert('Link de pago copiado');
+        }).catch(function() {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+function fallbackCopy(text) {
     const el = document.createElement('textarea');
     el.value = text;
+    el.style.position = 'fixed';
+    el.style.opacity = '0';
     document.body.appendChild(el);
     el.select();
     document.execCommand('copy');
     document.body.removeChild(el);
-    alert('Link de pago copiado: ' + text);
+    alert('Link de pago copiado');
 }
 </script>
 {% endblock %}

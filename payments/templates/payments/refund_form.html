@@ -1,48 +1,45 @@
 {% extends 'dashboard/layouts/base.html' %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Solicitar Reembolso</h1>
-            </div>
+<!-- Page Header -->
+<div class="mb-6">
+    <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--navy-900);margin:0;">Solicitar Reembolso</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card-modern" style="border-left:4px solid var(--danger);">
+            <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin-bottom:var(--space-4);padding-bottom:var(--space-3);border-bottom:1px solid var(--gray-100);">
+                <i class="fas fa-exclamation-triangle mr-2" style="color:var(--danger);"></i>Confirmación de devolución
+            </h3>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- Payment Summary -->
+                <div style="background:var(--danger-light);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-sm);padding:var(--space-4);margin-bottom:var(--space-4);">
+                    <h5 style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--danger);margin-bottom:var(--space-3);">Resumen del Pago</h5>
+                    <p style="font-size:var(--font-size-sm);margin-bottom:var(--space-1);color:var(--gray-700);"><strong>Cliente:</strong> {{ payment.first_name }} {{ payment.last_name }}</p>
+                    <p style="font-size:var(--font-size-sm);margin-bottom:var(--space-1);color:var(--gray-700);"><strong>Monto:</strong> ${{ payment.amount }}</p>
+                    <p style="font-size:var(--font-size-sm);margin-bottom:0;color:var(--gray-700);"><strong>Fecha:</strong> {{ payment.link.created_at|date:"d/m/Y" }}</p>
+                </div>
+
+                <!-- Reason -->
+                <div class="form-group mb-4">
+                    <label style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-700);margin-bottom:var(--space-2);">Motivo del reembolso</label>
+                    <textarea name="description" class="form-control" rows="4" placeholder="Explique por qué solicita la devolución de este pago..." required style="border:2px solid var(--gray-200);border-radius:var(--radius-sm);padding:12px 16px;font-size:var(--font-size-base);font-family:var(--font-family);transition:all var(--transition-fast);background:var(--gray-50);color:var(--gray-800);outline:none;width:100%;resize:vertical;" onfocus="this.style.borderColor='var(--teal)';this.style.background='var(--white)';this.style.boxShadow='0 0 0 4px rgba(0,201,167,0.1)';" onblur="this.style.borderColor='var(--gray-200)';this.style.background='var(--gray-50)';this.style.boxShadow='none';"></textarea>
+                    <small style="color:var(--gray-400);font-size:var(--font-size-xs);">Esta información será revisada por nuestro equipo de soporte.</small>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex justify-content-end gap-2" style="padding-top:var(--space-4);border-top:1px solid var(--gray-100);">
+                    <a href="{% url 'payments:payment_history' %}" class="btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn-primary-auth" style="background:linear-gradient(135deg,var(--danger) 0%,#dc2626 100%);box-shadow:0 4px 16px rgba(239,68,68,0.25);">
+                        <i class="fas fa-paper-plane mr-1"></i> Enviar Solicitud
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
-
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-6 offset-md-3">
-                <div class="card card-danger">
-                    <div class="card-header">
-                        <h3 class="card-title">Confirmación de devolución</h3>
-                    </div>
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="card-body">
-                            <div class="callout callout-danger">
-                                <h5>Resumen del Pago</h5>
-                                <p><strong>Cliente:</strong> {{ payment.first_name }} {{ payment.last_name }}</p>
-                                <p><strong>Monto:</strong> ${{ payment.amount }}</p>
-                                <p><strong>Fecha:</strong> {{ payment.link.created_at|date:"d/m/Y" }}</p>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Motivo del reembolso</label>
-                                <textarea name="description" class="form-control" rows="4" placeholder="Explique por qué solicita la devolución de este pago..." required></textarea>
-                                <small class="text-muted">Esta información será revisada por nuestro equipo de soporte.</small>
-                            </div>
-                        </div>
-                        <div class="card-footer text-right">
-                            <a href="{% url 'payments:payment_history' %}" class="btn btn-default">Cancelar</a>
-                            <button type="submit" class="btn btn-danger">Enviar Solicitud</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 {% endblock %}

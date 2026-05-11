@@ -3,95 +3,88 @@
 {% block title %}Detalle de Venta - PagoLink{% endblock %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Resumen de Transacción</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{% url 'payments:payment_history' %}">Ventas</a></li>
-                    <li class="breadcrumb-item active">Detalle</li>
-                </ol>
-            </div>
-        </div>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-6">
+    <div>
+        <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--navy-900);margin:0;">Resumen de Transacción</h1>
+        <p style="color:var(--gray-500);font-size:var(--font-size-sm);margin:0;">
+            <a href="{% url 'payments:payment_history' %}" style="color:var(--teal);">Ventas</a> &rsaquo; Detalle
+        </p>
     </div>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card card-outline {% if payment.state %}card-success{% else %}card-danger{% endif %}">
-                    <div class="card-header">
-                        <h3 class="card-title">Información del Pago</h3>
-                        <div class="card-tools">
-                            {% if payment.state %}
-                                <span class="badge badge-success">PAGADO</span>
-                            {% else %}
-                                <span class="badge badge-danger">PENDIENTE / FALLIDO</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-sm">
-                            <tr>
-                                <th>Concepto:</th>
-                                <td>{{ payment.description }}</td>
-                            </tr>
-                            <tr>
-                                <th>Monto Total:</th>
-                                <td class="text-success text-bold">${{ payment.amount }}</td>
-                            </tr>
-                            <tr>
-                                <th>ID Transacción (Datafast):</th>
-                                <td><code>{{ payment.transaction_id|default:"N/A" }}</code></td>
-                            </tr>
-                            <tr>
-                                <th>Fecha de Registro:</th>
-                                <td>{{ payment.link.created_at|date:"d/m/Y H:i" }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
+<div class="row">
+    <!-- LEFT: Payment Info Card -->
+    <div class="col-md-6">
+        <div class="card-modern">
+            <div class="d-flex justify-content-between align-items-center" style="margin-bottom:var(--space-4);padding-bottom:var(--space-3);border-bottom:1px solid var(--gray-100);">
+                <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin:0;">
+                    <i class="fas fa-file-invoice-dollar mr-2" style="color:var(--teal);"></i>Información del Pago
+                </h3>
+                {% if payment.state %}
+                    <span class="badge-status paid">PAGADO</span>
+                {% else %}
+                    <span class="badge-status failed">PENDIENTE / FALLIDO</span>
+                {% endif %}
             </div>
 
-            <div class="col-md-6">
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Datos del Cliente</h3>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-sm">
-                            <tr>
-                                <th>Nombre:</th>
-                                <td>{{ payment.first_name }} {{ payment.last_name }}</td>
-                            </tr>
-                            <tr>
-                                <th>Email:</th>
-                                <td>{{ payment.email }}</td>
-                            </tr>
-                            <tr>
-                                <th>Identificación:</th>
-                                <td>{{ payment.identify }}</td>
-                            </tr>
-                            <tr>
-                                <th>Teléfono:</th>
-                                <td>{{ payment.phone }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                    <div class="card-footer text-right">
-                        {% if payment.state and not payment.refund %}
-                            <a href="{% url 'payments:refund_request' payment_id=payment.id %}" class="btn btn-danger btn-sm">
-                                <i class="fas fa-undo mr-1"></i> Solicitar Reembolso
-                            </a>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+            <table style="width:100%;border-collapse:collapse;">
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);width:45%;">Concepto:</td>
+                    <td style="padding:var(--space-2) 0;color:var(--gray-700);">{{ payment.description }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);">Monto Total:</td>
+                    <td style="padding:var(--space-2) 0;font-weight:var(--font-weight-bold);color:var(--success);font-size:var(--font-size-lg);">${{ payment.amount }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);">ID Transacción (Datafast):</td>
+                    <td style="padding:var(--space-2) 0;"><code style="background:var(--gray-100);padding:2px 6px;border-radius:4px;font-size:var(--font-size-xs);color:var(--gray-700);">{{ payment.transaction_id|default:"N/A" }}</code></td>
+                </tr>
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);">Fecha de Registro:</td>
+                    <td style="padding:var(--space-2) 0;color:var(--gray-700);">{{ payment.link.created_at|date:"d/m/Y H:i" }}</td>
+                </tr>
+            </table>
         </div>
     </div>
-</section>
+
+    <!-- RIGHT: Client Data + Actions Card -->
+    <div class="col-md-6">
+        <div class="card-modern">
+            <div style="margin-bottom:var(--space-4);padding-bottom:var(--space-3);border-bottom:1px solid var(--gray-100);">
+                <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin:0;">
+                    <i class="fas fa-user mr-2" style="color:var(--teal);"></i>Datos del Cliente
+                </h3>
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;">
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);width:40%;">Nombre:</td>
+                    <td style="padding:var(--space-2) 0;color:var(--gray-700);">{{ payment.first_name }} {{ payment.last_name }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);">Email:</td>
+                    <td style="padding:var(--space-2) 0;color:var(--gray-700);">{{ payment.email }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);">Identificación:</td>
+                    <td style="padding:var(--space-2) 0;color:var(--gray-700);">{{ payment.identify }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:var(--space-2) 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--gray-500);">Teléfono:</td>
+                    <td style="padding:var(--space-2) 0;color:var(--gray-700);">{{ payment.phone }}</td>
+                </tr>
+            </table>
+
+            {% if payment.state and not payment.refund %}
+            <div style="margin-top:var(--space-6);padding-top:var(--space-4);border-top:1px solid var(--gray-100);text-align:right;">
+                <a href="{% url 'payments:refund_request' payment_id=payment.id %}" class="btn-secondary" style="color:var(--danger);border-color:var(--danger);">
+                    <i class="fas fa-undo mr-1"></i> Solicitar Reembolso
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}

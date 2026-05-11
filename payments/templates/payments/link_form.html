@@ -5,49 +5,47 @@
 
 {% block css %}
 <style>
-    .card-modern {
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        border: none;
-        margin-bottom: 1.5rem;
-    }
+    /* ── Link Form specific styles (aligned with design-system) ── */
     .hero-amount-box {
-        background: #f8f9fa;
+        background: var(--gray-50);
         padding: 30px;
-        border-radius: 12px;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s;
+        border-radius: var(--radius);
+        border: 2px solid var(--gray-200);
+        transition: all var(--transition-fast);
     }
     .hero-amount-box:focus-within {
-        border-color: #007bff;
-        background: #fff;
+        border-color: var(--teal);
+        background: var(--white);
+        box-shadow: 0 0 0 4px rgba(0, 201, 167, 0.1);
     }
     .hero-amount-input {
         font-size: 3rem !important;
         font-weight: 700;
         border: none;
         background: transparent;
-        color: #28a745;
+        color: var(--success);
         padding: 0;
         height: auto;
         text-align: center;
         width: 100%;
+        outline: none;
+        font-family: var(--font-family);
     }
     .hero-amount-input:focus {
         box-shadow: none;
         outline: none;
     }
     .receipt-box {
-        background: #fff;
-        border: 1px dashed #dee2e6;
-        border-radius: 10px;
+        background: var(--white);
+        border: 1px dashed var(--gray-300);
+        border-radius: var(--radius-sm);
         padding: 20px;
         position: relative;
     }
     .section-title {
         font-size: 1.1rem;
-        font-weight: 600;
-        color: #495057;
+        font-weight: var(--font-weight-semibold);
+        color: var(--gray-700);
         margin-bottom: 1.5rem;
         display: flex;
         align-items: center;
@@ -55,8 +53,8 @@
     .section-title i {
         width: 30px;
         height: 30px;
-        background: #e7f1ff;
-        color: #007bff;
+        background: rgba(0, 201, 167, 0.1);
+        color: var(--teal);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -86,40 +84,26 @@
     .custom-switch .custom-control-input:checked ~ .custom-control-label::after {
         transform: translateX(1.25rem);
     }
-    .btn-generate {
-        border-radius: 12px;
-        padding: 15px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        transition: all 0.3s;
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-    }
-    .btn-generate:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-    }
-    /* Estilos específicos para la sección del cliente */
     .client-data-box {
-        background-color: #fcfcfc;
-        border-radius: 10px;
+        background-color: var(--gray-50);
+        border-radius: var(--radius-sm);
         padding: 20px;
-        border: 1px solid #f1f1f1;
+        border: 1px solid var(--gray-100);
     }
     .input-group-modern {
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
         overflow: hidden;
-        border: 1px solid #ced4da;
-        transition: all 0.2s;
+        border: 1px solid var(--gray-300);
+        transition: all var(--transition-fast);
     }
     .input-group-modern:focus-within {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.1);
+        border-color: var(--teal);
+        box-shadow: 0 0 0 4px rgba(0, 201, 167, 0.1);
     }
     .input-group-modern .input-group-text {
-        background-color: #fff;
+        background-color: var(--white);
         border: none;
-        color: #adb5bd;
+        color: var(--gray-400);
     }
     .input-group-modern .form-control {
         border: none;
@@ -128,187 +112,184 @@
     .input-group-modern .form-control:focus {
         box-shadow: none;
     }
+    .section-header {
+        text-align: center;
+        margin-bottom: var(--space-6);
+    }
+    .section-header h1 {
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--navy-900);
+    }
+    .section-header p {
+        color: var(--gray-500);
+        font-size: var(--font-size-base);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-3">
-            <div class="col-sm-12 text-center">
-                <h1 class="font-weight-bold">Generador de Cobros</h1>
-                <p class="text-muted">Crea una experiencia de pago impecable para tus clientes.</p>
+<div class="section-header">
+    <h1>Generador de Cobros</h1>
+    <p>Crea una experiencia de pago impecable para tus clientes.</p>
+</div>
+
+<form method="POST" style="max-width:1200px;margin:0 auto;">
+    {% csrf_token %}
+    <div class="row">
+
+        <!-- COLUMNA IZQUIERDA -->
+        <div class="col-lg-7">
+
+            <!-- 1. Información del Monto -->
+            <div class="card-modern">
+                <div class="section-title">
+                    <i class="fas fa-money-check-alt"></i> 1. Definición del Cobro
+                </div>
+
+                <div class="hero-amount-box mb-4">
+                    <label class="text-muted small text-uppercase font-weight-bold d-block text-center mb-3">Total a recaudar</label>
+                    {{ form.subtotal }}
+                    {% if form.subtotal.errors %}
+                        <div class="text-danger text-center small mt-2">{{ form.subtotal.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="small font-weight-bold text-muted">CONCEPTO DEL PAGO</label>
+                    <div class="input-group input-group-modern">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-shopping-cart"></i></span>
+                        </div>
+                        {{ form.description }}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold text-muted">TIPO DE IMPUESTO</label>
+                            {{ form.tax_type }}
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="custom-control custom-switch custom-switch-on-success mb-2">
+                            {{ form.include_igv }}
+                            <label class="custom-control-label" for="id_include_igv">
+                                <span class="text-sm font-weight-bold">{{ form.include_igv.label }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-</section>
 
-<section class="content">
-    <div class="container-fluid pb-5">
-        <form method="POST">
-            {% csrf_token %}
-            <div class="row">
-                
-                <!-- COLUMNA IZQUIERDA -->
-                <div class="col-lg-7">
-                    
-                    <!-- 1. Información del Monto -->
-                    <div class="card card-modern">
-                        <div class="card-body p-4">
-                            <div class="section-title">
-                                <i class="fas fa-money-check-alt"></i> 1. Definición del Cobro
-                            </div>
+            <!-- 2. Datos del Cliente -->
+            <div class="card-modern" style="margin-top:var(--space-6);">
+                <div class="section-title">
+                    <i class="fas fa-user-tie"></i> 2. Perfil del Cliente
+                    <span style="margin-left:auto;font-size:var(--font-size-xs);font-weight:var(--font-weight-medium);color:var(--gray-400);border:1px solid var(--gray-200);border-radius:var(--radius-full);padding:4px 12px;">OPCIONAL</span>
+                </div>
 
-                            <div class="hero-amount-box mb-4">
-                                <label class="text-muted small text-uppercase font-weight-bold d-block text-center mb-3">Total a recaudar</label>
-                                {{ form.subtotal }}
-                                {% if form.subtotal.errors %}
-                                    <div class="text-danger text-center small mt-2">{{ form.subtotal.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="form-group mb-4">
-                                <label class="small font-weight-bold text-muted">CONCEPTO DEL PAGO</label>
+                <div class="client-data-box">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="small font-weight-bold text-muted">NOMBRE</label>
                                 <div class="input-group input-group-modern">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text"><i class="fas fa-shopping-cart"></i></span>
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
                                     </div>
-                                    {{ form.description }}
+                                    {{ form.firstname }}
                                 </div>
                             </div>
-
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-0">
-                                        <label class="small font-weight-bold text-muted">TIPO DE IMPUESTO</label>
-                                        {{ form.tax_type }}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="small font-weight-bold text-muted">APELLIDO</label>
+                                <div class="input-group input-group-modern">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
                                     </div>
-                                </div>
-                                <div class="col-md-6 d-flex align-items-end">
-                                    <div class="custom-control custom-switch custom-switch-on-success mb-2">
-                                        {{ form.include_igv }}
-                                        <label class="custom-control-label" for="id_include_igv">
-                                            <span class="text-sm font-weight-bold">{{ form.include_igv.label }}</span>
-                                        </label>
-                                    </div>
+                                    {{ form.lastname }}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 2. Datos del Cliente (REDiseñado) -->
-                    <div class="card card-modern">
-                        <div class="card-body p-4">
-                            <div class="section-title">
-                                <i class="fas fa-user-tie"></i> 2. Perfil del Cliente
-                                <span class="badge badge-light ml-auto text-xs border font-weight-normal py-1 px-2">OPCIONAL</span>
+                    <div class="form-group mb-3">
+                        <label class="small font-weight-bold text-muted">EMAIL PARA COMPROBANTE</label>
+                        <div class="input-group input-group-modern">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                             </div>
-                            
-                            <div class="client-data-box">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group mb-3">
-                                            <label class="small font-weight-bold text-muted">NOMBRE</label>
-                                            <div class="input-group input-group-modern">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                                </div>
-                                                {{ form.firstname }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group mb-3">
-                                            <label class="small font-weight-bold text-muted">APELLIDO</label>
-                                            <div class="input-group input-group-modern">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                                </div>
-                                                {{ form.lastname }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-group mb-3">
-                                    <label class="small font-weight-bold text-muted">EMAIL PARA COMPROBANTE</label>
-                                    <div class="input-group input-group-modern">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                        </div>
-                                        {{ form.email }}
-                                    </div>
-                                </div>
+                            {{ form.email }}
+                        </div>
+                    </div>
 
-                                <div class="form-group mb-0">
-                                    <label class="small font-weight-bold text-muted">IDENTIFICACIÓN (CÉDULA/RUC)</label>
-                                    <div class="input-group input-group-modern">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="fas fa-id-card"></i></span>
-                                        </div>
-                                        {{ form.identity }}
-                                    </div>
-                                </div>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-bold text-muted">IDENTIFICACIÓN (CÉDULA/RUC)</label>
+                        <div class="input-group input-group-modern">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-id-card"></i></span>
                             </div>
-                            <p class="text-xs text-muted mt-3 mb-0">
-                                <i class="fas fa-info-circle mr-1"></i> Al completar estos datos, el cliente recibirá una notificación automática.
-                            </p>
+                            {{ form.identity }}
                         </div>
                     </div>
                 </div>
-
-                <!-- COLUMNA DERECHA -->
-                <div class="col-lg-5">
-                    
-                    <div class="card card-modern">
-                        <div class="card-body p-4">
-                            <div class="section-title justify-content-center">
-                                <i class="fas fa-file-invoice"></i> Resumen de Transacción
-                            </div>
-                            
-                            <div class="receipt-box mb-4">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Monto Base</span>
-                                    <span id="lbl_base" class="font-weight-bold text-dark">$0.00</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-3">
-                                    <span class="text-muted" id="lbl_tax_name">IVA (15%)</span>
-                                    <span id="lbl_iva" class="font-weight-bold text-dark">$0.00</span>
-                                </div>
-                                <div class="border-top pt-3 d-flex justify-content-between align-items-center">
-                                    <span class="font-weight-bold text-uppercase small text-muted">Total a Pagar</span>
-                                    <span id="lbl_total" class="h2 font-weight-bold text-success mb-0">$0.00</span>
-                                </div>
-                            </div>
-
-                            <div class="custom-control custom-switch custom-switch-on-primary py-2">
-                                {{ form.unique }}
-                                <label class="custom-control-label" for="id_unique">
-                                    <span class="font-weight-bold">Link de un solo uso</span>
-                                </label>
-                            </div>
-                            <p class="text-xs text-muted ml-5">Ideal para pagos específicos. El link caduca al primer éxito.</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-success btn-block btn-generate btn-lg shadow">
-                            <i class="fas fa-rocket mr-2"></i> ACTIVAR LINK AHORA
-                        </button>
-                        <a href="{% url 'payments:link_list' %}" class="btn btn-link btn-block text-muted mt-3">
-                            <i class="fas fa-chevron-left mr-1 small"></i> Regresar al listado
-                        </a>
-                    </div>
-
-                    <div class="text-center mt-5">
-                        <img src="https://www.datafast.com.ec/images/verified.png" alt="Datafast Verified" style="height: 40px; opacity: 0.7;">
-                    </div>
-                </div>
-
+                <p class="text-xs text-muted mt-3 mb-0">
+                    <i class="fas fa-info-circle mr-1"></i> Al completar estos datos, el cliente recibirá una notificación automática.
+                </p>
             </div>
-        </form>
+        </div>
+
+        <!-- COLUMNA DERECHA -->
+        <div class="col-lg-5">
+
+            <div class="card-modern">
+                <div class="section-title justify-content-center">
+                    <i class="fas fa-file-invoice"></i> Resumen de Transacción
+                </div>
+
+                <div class="receipt-box mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Monto Base</span>
+                        <span id="lbl_base" class="font-weight-bold text-dark">$0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted" id="lbl_tax_name">IVA (15%)</span>
+                        <span id="lbl_iva" class="font-weight-bold text-dark">$0.00</span>
+                    </div>
+                    <div class="border-top pt-3 d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold text-uppercase small text-muted">Total a Pagar</span>
+                        <span id="lbl_total" class="h2 font-weight-bold text-success mb-0">$0.00</span>
+                    </div>
+                </div>
+
+                <div class="custom-control custom-switch custom-switch-on-primary py-2">
+                    {{ form.unique }}
+                    <label class="custom-control-label" for="id_unique">
+                        <span class="font-weight-bold">Link de un solo uso</span>
+                    </label>
+                </div>
+                <p class="text-xs text-muted ml-5">Ideal para pagos específicos. El link caduca al primer éxito.</p>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn-primary-auth" style="width:100%;padding:15px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:var(--font-size-base);">
+                    <i class="fas fa-rocket mr-2"></i> ACTIVAR LINK AHORA
+                </button>
+                <a href="{% url 'payments:link_list' %}" class="btn-secondary" style="width:100%;margin-top:var(--space-3);text-align:center;border:none;color:var(--gray-500);background:transparent;">
+                    <i class="fas fa-chevron-left mr-1 small"></i> Regresar al listado
+                </a>
+            </div>
+
+            <div class="text-center mt-5">
+                <img src="https://www.datafast.com.ec/images/verified.png" alt="Datafast Verified" style="height: 40px; opacity: 0.7;">
+            </div>
+        </div>
+
     </div>
-</section>
+</form>
 {% endblock %}
 
 {% block javascript %}
@@ -330,7 +311,7 @@ $(document).ready(function() {
         let monto = parseFloat(inputMonto.val()) || 0;
         let taxType = selectTax.val();
         let incluyeIva = switchInclude.is(':checked');
-        
+
         let rate = 0;
         let taxName = "IVA (0%)";
 

@@ -1,69 +1,60 @@
 {% extends 'dashboard/layouts/base.html' %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Mis Reembolsos</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Inicio</a></li>
-                    <li class="breadcrumb-item active">Reembolsos</li>
-                </ol>
-            </div>
-        </div>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-6">
+    <div>
+        <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--navy-900);margin:0;">Mis Reembolsos</h1>
+        <p style="color:var(--gray-500);font-size:var(--font-size-sm);margin:0;">
+            <a href="{% url 'dashboard:dashboard' %}" style="color:var(--teal);">Inicio</a> &rsaquo; Reembolsos
+        </p>
     </div>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-12">
-                <div class="card card-warning card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title">Historial de solicitudes de devolución</h3>
-                    </div>
-                    <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>Fecha Solicitud</th>
-                                    <th>Cliente</th>
-                                    <th>Monto</th>
-                                    <th>Motivo</th>
-                                    <th>Estado</th>
-                                    <th>Ticket #</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for refund in refunds %}
-                                <tr>
-                                    <td>{{ refund.created_at|date:"d/m/Y H:i" }}</td>
-                                    <td>{{ refund.payment.first_name }} {{ refund.payment.last_name }}</td>
-                                    <td><strong>${{ refund.amount }}</strong></td>
-                                    <td>{{ refund.description|truncatechars:40 }}</td>
-                                    <td>
-                                        {% if refund.state %}
-                                        <span class="badge bg-success">Aprobado</span>
-                                        {% else %}
-                                        <span class="badge bg-warning">Pendiente</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ refund.ticket|default:"En proceso" }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">No tienes solicitudes de reembolso registradas.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- Refunds Table -->
+<div class="card-modern" style="padding:0;overflow:hidden;">
+    <div style="padding:var(--space-4) var(--space-6);border-bottom:1px solid var(--gray-100);">
+        <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin:0;">
+            <i class="fas fa-undo-alt mr-2" style="color:var(--warning);"></i>Historial de solicitudes de devolución
+        </h3>
     </div>
-</section>
+    <div style="overflow-x:auto;">
+        <table class="table-modern">
+            <thead>
+                <tr>
+                    <th>Fecha Solicitud</th>
+                    <th>Cliente</th>
+                    <th>Monto</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                    <th>Ticket #</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for refund in refunds %}
+                <tr>
+                    <td>{{ refund.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ refund.payment.first_name }} {{ refund.payment.last_name }}</td>
+                    <td><strong>${{ refund.amount }}</strong></td>
+                    <td>{{ refund.description|truncatechars:40 }}</td>
+                    <td>
+                        {% if refund.state %}
+                        <span class="badge-status success">Aprobado</span>
+                        {% else %}
+                        <span class="badge-status pending">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ refund.ticket|default:"En proceso" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:var(--space-8) var(--space-6);color:var(--gray-400);">
+                        No tienes solicitudes de reembolso registradas.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

@@ -3,106 +3,130 @@
 {% block title %}Detalle de Link - PagoLink{% endblock %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Detalle de Link de Pago</h1>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-6">
+    <div>
+        <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--navy-900);margin:0;">Detalle de Link de Pago</h1>
+        <p style="color:var(--gray-500);font-size:var(--font-size-sm);margin:0;">
+            <a href="{% url 'payments:link_list' %}" style="color:var(--teal);">Links</a> &rsaquo; Detalle
+        </p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- LEFT: Link Config Card -->
+    <div class="col-md-4">
+        <div class="card-modern">
+            <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin-bottom:var(--space-4);padding-bottom:var(--space-3);border-bottom:1px solid var(--gray-100);">
+                <i class="fas fa-cog mr-2" style="color:var(--teal);"></i>Configuración del Link
+            </h3>
+
+            <div style="margin-bottom:var(--space-4);">
+                <strong style="font-size:var(--font-size-xs);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;">
+                    <i class="fas fa-file-alt mr-1"></i> Descripción
+                </strong>
+                <p style="color:var(--gray-700);margin-top:var(--space-1);margin-bottom:0;">{{ link.description }}</p>
             </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{% url 'payments:link_list' %}">Links</a></li>
-                    <li class="breadcrumb-item active">Detalle</li>
-                </ol>
+
+            <div style="margin-bottom:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--gray-100);">
+                <strong style="font-size:var(--font-size-xs);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;">
+                    <i class="fas fa-dollar-sign mr-1"></i> Monto Total
+                </strong>
+                <p style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--success);margin-top:var(--space-1);margin-bottom:0;">${{ link.amount }}</p>
+            </div>
+
+            <div style="margin-bottom:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--gray-100);">
+                <strong style="font-size:var(--font-size-xs);color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;">
+                    <i class="fas fa-info-circle mr-1"></i> Atributos
+                </strong>
+                <div style="margin-top:var(--space-2);display:flex;flex-direction:column;gap:var(--space-2);">
+                    <span>
+                        Tipo: {% if link.unique %}<span class="badge-status" style="background:var(--warning-light);color:var(--warning);">Único</span>{% else %}<span class="badge-status" style="background:#eff6ff;color:#3b82f6;">Múltiple</span>{% endif %}
+                    </span>
+                    <span>
+                        Estado: {% if link.active %}<span class="badge-status success">Activo</span>{% else %}<span class="badge-status failed">Inactivo</span>{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <button class="btn-primary-auth" style="width:100%;margin-top:var(--space-2);" onclick="copyToClipboard('{{ request.scheme }}://{{ request.get_host }}{% url 'payments:link_checkout' pk=link.pk %}')">
+                <i class="fas fa-copy mr-1"></i> Copiar Link de Pago
+            </button>
+        </div>
+    </div>
+
+    <!-- RIGHT: Transaction History -->
+    <div class="col-md-8">
+        <div class="card-modern" style="padding:0;overflow:hidden;">
+            <div style="padding:var(--space-4) var(--space-6);border-bottom:1px solid var(--gray-100);">
+                <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin:0;">
+                    Intentos de Pago / Transacciones
+                </h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="table-modern">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Estado</th>
+                            <th>Monto</th>
+                            <th>ID Transacción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.created_at|date:"d/m/Y H:i"|default:link.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>{{ payment.first_name }} {{ payment.last_name }}</td>
+                            <td>
+                                {% if payment.status == 'PAID' %}
+                                    <span class="badge-status paid">Pagado</span>
+                                {% elif payment.status == 'PENDING' %}
+                                    <span class="badge-status pending">Pendiente</span>
+                                {% else %}
+                                    <span class="badge-status failed">Fallido</span>
+                                {% endif %}
+                            </td>
+                            <td>${{ payment.amount }}</td>
+                            <td><small>{{ payment.transaction_id|default:"---" }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align:center;padding:var(--space-8) var(--space-6);color:var(--gray-400);">
+                                Aún no hay transacciones para este link.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">Configuración del Link</h3>
-                    </div>
-                    <div class="card-body">
-                        <strong><i class="fas fa-file-alt mr-1"></i> Descripción</strong>
-                        <p class="text-muted">{{ link.description }}</p>
-                        <hr>
-                        <strong><i class="fas fa-dollar-sign mr-1"></i> Monto Total</strong>
-                        <p class="text-muted h4 text-success">${{ link.amount }}</p>
-                        <hr>
-                        <strong><i class="fas fa-info-circle mr-1"></i> Atributos</strong>
-                        <p class="text-muted">
-                            Tipo: {% if link.unique %}<span class="badge bg-warning">Único</span>{% else %}<span class="badge bg-info">Múltiple</span>{% endif %}<br>
-                            Estado: {% if link.active %}<span class="badge bg-success">Activo</span>{% else %}<span class="badge bg-danger">Inactivo</span>{% endif %}
-                        </p>
-                        <hr>
-                        <button class="btn btn-primary btn-block" onclick="copyToClipboard('{{ request.scheme }}://{{ request.get_host }}{% url 'payments:link_checkout' pk=link.pk %}')">
-                            <i class="fas fa-copy mr-1"></i> Copiar Link de Pago
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-8">
-                <div class="card card-outline card-info">
-                    <div class="card-header">
-                        <h3 class="card-title">Intentos de Pago / Transacciones</h3>
-                    </div>
-                    <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Cliente</th>
-                                    <th>Estado</th>
-                                    <th>Monto</th>
-                                    <th>ID Transacción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payment in payments %}
-                                <tr>
-                                    <td>{{ payment.created_at|date:"d/m/Y H:i"|default:link.created_at|date:"d/m/Y H:i" }}</td>
-                                    <td>{{ payment.first_name }} {{ payment.last_name }}</td>
-                                    <td>
-                                        {% if payment.status == 'PAID' %}
-                                            <span class="badge badge-success">Pagado</span>
-                                        {% elif payment.status == 'PENDING' %}
-                                            <span class="badge badge-warning">Pendiente</span>
-                                        {% else %}
-                                            <span class="badge badge-danger">Fallido</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>${{ payment.amount }}</td>
-                                    <td><small>{{ payment.transaction_id|default:"---" }}</small></td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">Aún no hay transacciones para este link.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
 <script>
 function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            alert('Link de pago copiado');
+        }).catch(function() {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+function fallbackCopy(text) {
     const el = document.createElement('textarea');
     el.value = text;
+    el.style.position = 'fixed';
+    el.style.opacity = '0';
     document.body.appendChild(el);
     el.select();
     document.execCommand('copy');
     document.body.removeChild(el);
-    alert('Link de pago copiado: ' + text);
+    alert('Link de pago copiado');
 }
 </script>
 {% endblock %}

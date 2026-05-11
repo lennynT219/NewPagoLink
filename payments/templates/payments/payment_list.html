@@ -1,96 +1,92 @@
 {% extends 'dashboard/layouts/base.html' %}
 
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0">Historial de Ventas</h1>
-            </div>
-            <div class="col-sm-6">
-                <div class="float-sm-right">
-                    <a href="{% url 'payments:export_csv' %}" class="btn btn-outline-primary btn-sm mr-2">
-                        <i class="fas fa-file-csv"></i> Exportar CSV
-                    </a>
-                    <a href="{% url 'payments:export_excel' %}" class="btn btn-outline-success btn-sm">
-                        <i class="fas fa-file-excel"></i> Exportar Excel
-                    </a>
-                </div>
-            </div>
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-6" style="flex-wrap:wrap;gap:var(--space-3);">
+    <div>
+        <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--navy-900);margin:0;">Historial de Ventas</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'payments:export_csv' %}" class="btn-secondary" style="padding:8px 16px;font-size:var(--font-size-sm);">
+            <i class="fas fa-file-csv"></i> Exportar CSV
+        </a>
+        <a href="{% url 'payments:export_excel' %}" class="btn-secondary" style="padding:8px 16px;font-size:var(--font-size-sm);">
+            <i class="fas fa-file-excel"></i> Exportar Excel
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--space-4);margin-bottom:var(--space-6);">
+    <div class="card-stat">
+        <div class="card-stat-icon" style="background:rgba(0,201,167,0.1);color:var(--teal);">
+            <i class="fas fa-wallet"></i>
+        </div>
+        <div class="card-stat-info">
+            <span class="card-stat-value">${{ total_collected }}</span>
+            <span class="card-stat-label">Total Recaudado</span>
         </div>
     </div>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <!-- Resumen Rápido -->
-        <div class="row">
-            <div class="col-lg-3 col-6">
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>${{ total_collected }}</h3>
-                        <p>Total Recaudado</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-wallet"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-12">
-                <div class="card card-primary card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title">Todas las transacciones</h3>
-                    </div>
-                    <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Cliente</th>
-                                    <th>Email</th>
-                                    <th>Monto</th>
-                                    <th>Estado</th>
-                                    <th>Transacción ID</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payment in payments %}
-                                <tr>
-                                    <td>{{ payment.link.created_at|date:"d/m/Y H:i" }}</td>
-                                    <td>{{ payment.first_name }} {{ payment.last_name }}</td>
-                                    <td>{{ payment.email }}</td>
-                                    <td><strong>${{ payment.amount|floatformat:2 }}</strong></td>
-                                    <td>
-                                        {% if payment.status == 'PAID' %}
-                                            <span class="badge badge-success">Pagado</span>
-                                        {% elif payment.status == 'PENDING' %}
-                                            <span class="badge badge-warning">Pendiente</span>
-                                        {% else %}
-                                            <span class="badge badge-danger">Fallido</span>
-                                        {% endif %}
-                                    </td>
-                                    <td><small class="text-muted">{{ payment.transaction_id|default:"---" }}</small></td>
-                                    <td>
-                                        <a href="{% url 'payments:payment_detail' pk=payment.id %}" class="btn btn-default btn-xs" title="Detalle completo">
-                                            <i class="fas fa-info-circle"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">No hay transacciones registradas aún.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- Payments Table -->
+<div class="card-modern" style="padding:0;overflow:hidden;">
+    <div style="padding:var(--space-4) var(--space-6);border-bottom:1px solid var(--gray-100);">
+        <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--navy-900);margin:0;">
+            Todas las transacciones
+        </h3>
     </div>
-</section>
+    <div style="overflow-x:auto;">
+        <table class="table-modern">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Email</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                    <th>Transacción ID</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.link.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ payment.first_name }} {{ payment.last_name }}</td>
+                    <td>{{ payment.email }}</td>
+                    <td><strong>${{ payment.amount|floatformat:2 }}</strong></td>
+                    <td>
+                        {% if payment.status == 'PAID' %}
+                            <span class="badge-status paid">Pagado</span>
+                        {% elif payment.status == 'PENDING' %}
+                            <span class="badge-status pending">Pendiente</span>
+                        {% else %}
+                            <span class="badge-status failed">Fallido</span>
+                        {% endif %}
+                    </td>
+                    <td><small style="color:var(--gray-500);">{{ payment.transaction_id|default:"---" }}</small></td>
+                    <td>
+                        <a href="{% url 'payments:payment_detail' pk=payment.id %}" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--radius-sm);color:var(--gray-500);transition:all var(--transition-fast);" onmouseover="this.style.background='var(--gray-100)';this.style.color='var(--teal)';" onmouseout="this.style.background='transparent';this.style.color='var(--gray-500)';" title="Detalle completo">
+                            <i class="fas fa-info-circle"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align:center;padding:var(--space-8) var(--space-6);">
+                        <div class="empty-state" style="padding:var(--space-6);">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <h3 class="empty-state-title">Sin transacciones</h3>
+                            <p class="empty-state-message">No hay transacciones registradas aún.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
