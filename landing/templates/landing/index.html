@@ -2,104 +2,81 @@
 {% load static %}
 {% block title %}Links de cobros{% endblock %}
 {% block content %}
-    <div class="w3l-index-block1">
-        <div class="content py-5">
-            <div class="container">
-                <div class="row align-items-center py-md-5 py-3">
-                    <div class="col-md-6 content-left pt-md-0 pt-5">
-                        <h1>Vende por redes sociales con link de cobros</h1>
-                        <p class="mt-3 mb-md-5 mb-4">
-                            Con PagoLink puedes crear links de cobros que puedes utilizar para
-                            vender por mail, chat o redes sociales. Aceptamos Visa, Mastercard,
-                            Américan Express y entre otras tarjetas de crédito o débito.
-                        </p>
-                        <a href="{% url 'dashboard:register' %}"
-                           class="btn btn-primary btn-theme">Regístrate</a>
-                    </div>
-                    <div class="col-md-6 content-photo mt-md-0 mt-5">
-                        <img src="{% static 'images/pagolink.jpg' %}"
-                             class="img-fluid"
-                             alt="main image" />
-                    </div>
-                </div>
-                <div class="clear"></div>
+
+<!-- ═══ Hero Section ═══ -->
+<section class="page-hero">
+    <div class="page-hero-content">
+        <h1 class="page-hero-title">Vende por redes sociales con link de cobros</h1>
+        <p class="page-hero-subtitle">
+            Con PagoLink puedes crear links de cobros que puedes utilizar para
+            vender por mail, chat o redes sociales. Aceptamos Visa, Mastercard,
+            American Express y entre otras tarjetas de crédito o débito.
+        </p>
+        <a href="{% url 'dashboard:register' %}" class="btn-primary-auth" style="font-size: 1.1rem; padding: 16px 40px;">
+            <i class="fas fa-rocket"></i> Comenzar ahora
+        </a>
+    </div>
+</section>
+
+<!-- ═══ How It Works — 3 Steps ═══ -->
+<section class="section-container">
+    <div class="section-heading">
+        <h2>¿Cómo funciona PagoLink?</h2>
+        <p>Vender con PagoLink es muy fácil. Solo tres pasos y empezás a cobrar.</p>
+    </div>
+    <div class="grid-3">
+        <div class="card-modern text-center">
+            <div style="width: 64px; height: 64px; border-radius: var(--radius); background: var(--teal-glow); color: var(--teal); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1rem;">
+                <i class="fas fa-user-plus"></i>
             </div>
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--navy-900); margin-bottom: 0.5rem;">Paso 1</h3>
+            <p style="color: var(--gray-500); font-size: 0.92rem;">Registra en PagoLink sin pagos fijos ni mensualidades</p>
+        </div>
+        <div class="card-modern text-center">
+            <div style="width: 64px; height: 64px; border-radius: var(--radius); background: var(--teal-glow); color: var(--teal); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1rem;">
+                <i class="fas fa-link"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--navy-900); margin-bottom: 0.5rem;">Paso 2</h3>
+            <p style="color: var(--gray-500); font-size: 0.92rem;">Crea tu link de cobro y envíale a tu cliente por tus redes sociales</p>
+        </div>
+        <div class="card-modern text-center">
+            <div style="width: 64px; height: 64px; border-radius: var(--radius); background: var(--teal-glow); color: var(--teal); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1rem;">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--navy-900); margin-bottom: 0.5rem;">Paso 3</h3>
+            <p style="color: var(--gray-500); font-size: 0.92rem;">Tu cliente realiza el pago y tu recibes tu pago en tu cuenta bancaria</p>
         </div>
     </div>
-    <section class="w3l-index-block2 py-5">
-        <div class="container py-md-3">
-            <div class="heading text-center mx-auto">
-                <h3 class="head">¿Cómo funciona PagoLink?</h3>
-                <p class="my-3 head">Vender con PagoLink es muy fácil.</p>
-            </div>
-            <div class="row bottom_grids pt-md-3">
-                <div class="col-lg-4 col-md-6 mt-5">
-                    <div class="s-block">
-                        <a href="#" class="d-block p-lg-4 p-3 text-center">
-                            <h3>
-                                <i class="fa fa-user-plus"></i>
-                            </h3>
-                            <p class="my-3">Registra en PagoLink sin pagos fijos ni mensualidades</p>
-                        </a>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6 mt-5">
-                    <div class="s-block">
-                        <a href="#" class="d-block p-lg-4 p-3 text-center">
-                            <h3>
-                                <i class="fa fa-user-plus"></i>
-                            </h3>
-                            <p class="my-3">Crea tu link de cobro y envíale a tu cliente por tus redes sociales</p>
-                        </a>
-                    </div>
-                </div>
-                <div class="col-lg-4 mt-5">
-                    <div class="s-block">
-                        <a href="#" class="d-block p-lg-4 p-3 text-center">
-                            <h3>
-                                <i class="fa fa-user-plus"></i>
-                            </h3>
-                            <p class="my-3">Tu cliente realiza el pago y tu recibes tu pago en tu cuenta bancaria</p>
-                        </a>
-                    </div>
-                </div>
-            </div>
+</section>
+
+<!-- ═══ Payment Methods ═══ -->
+<section style="background: var(--white); padding: var(--space-16) 0;">
+    <div class="section-container sm">
+        <div class="section-heading">
+            <h2>Aceptamos las tarjetas más usadas</h2>
         </div>
-    </section>
-    <section class="w3l-index-block9" id="partners">
-        <div class="partners py-5">
-            <div class="container py-lg-3">
-                <div class="heading text-center mx-auto">
-                    <h3 class="head">Aceptamos las tarjetas más usadas</h3>
-                </div>
-                <div class="row col-md-10 justify-content-between grid-part text-center mx-auto">
-                    <div class="parts-w3ls col-sm-2 col-6 mt-5">
-                        <span class="fa fa-cc-visa"></span>
-                    </div>
-                    <div class="parts-w3ls col-sm-2 col-6 mt-5">
-                        <span class="fa fa-cc-mastercard"></span>
-                    </div>
-                    <div class="parts-w3ls col-sm-2 col-6 mt-5">
-                        <span class="fa fa-cc-amex"></span>
-                    </div>
-                    <div class="parts-w3ls col-sm-2 col-6 mt-5">
-                        <span class="fa fa-cc-discover"></span>
-                    </div>
-                </div>
-            </div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-10); flex-wrap: wrap; padding: var(--space-8) 0;">
+            <span class="fab fa-cc-visa" style="font-size: 3rem; color: var(--gray-400); transition: color 0.3s ease;" onmouseover="this.style.color='var(--navy-700)'" onmouseout="this.style.color='var(--gray-400)'"></span>
+            <span class="fab fa-cc-mastercard" style="font-size: 3rem; color: var(--gray-400); transition: color 0.3s ease;" onmouseover="this.style.color='var(--navy-700)'" onmouseout="this.style.color='var(--gray-400)'"></span>
+            <span class="fab fa-cc-amex" style="font-size: 3rem; color: var(--gray-400); transition: color 0.3s ease;" onmouseover="this.style.color='var(--navy-700)'" onmouseout="this.style.color='var(--gray-400)'"></span>
+            <span class="fab fa-cc-discover" style="font-size: 3rem; color: var(--gray-400); transition: color 0.3s ease;" onmouseover="this.style.color='var(--navy-700)'" onmouseout="this.style.color='var(--gray-400)'"></span>
         </div>
-    </section>
-    <section class="w3l-index-block8 py-5">
-        <div class="container py-md-3 text-center">
-            <div class="heading text-center mx-auto">
-                <h3 class="head">¿Listo empezar a cobrar por internet?</h3>
-            </div>
-            <div class="buttons mt-4">
-                <a href="{% url 'landing:contact' %}"
-                   class="btn btn-outline-primary mr-2 btn-demo">Contáctenos</a>
-                <a href="{% url 'dashboard:register' %}"
-                   class="btn btn-primary btn-demo ml-2">Regístrate</a>
-            </div>
+    </div>
+</section>
+
+<!-- ═══ Final CTA ═══ -->
+<section class="page-hero" style="padding: var(--space-16) 0;">
+    <div class="page-hero-content">
+        <h2 class="page-hero-title" style="font-size: var(--font-size-4xl);">¿Listo empezar a cobrar por internet?</h2>
+        <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; margin-top: var(--space-8);">
+            <a href="{% url 'landing:contact' %}" class="btn-secondary" style="color: var(--white); border-color: rgba(255,255,255,0.4);">
+                Contáctenos
+            </a>
+            <a href="{% url 'dashboard:register' %}" class="btn-primary-auth">
+                Registrarme ahora
+            </a>
         </div>
-    </section>
+    </div>
+</section>
+
 {% endblock %}

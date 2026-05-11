@@ -1,110 +1,283 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport"
-              content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <title>
-            {% block title %}{% endblock %}
-        | Pago Link</title>
-        <link href="//fonts.googleapis.com/css?family=Roboto:300,400,500,700,900&display=swap"
-              rel="stylesheet" />
-        <link href="//fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900&display=swap"
-              rel="stylesheet" />
-        <link rel="stylesheet" href="{% static 'css/style.css' %}" />
-    </head>
-    <body>
-        <div class="w3l-bootstrap-header fixed-top">
-            <nav class="navbar navbar-expand-lg navbar-light p-2">
-                <div class="container">
-                    <a class="navbar-brand" href="{% url 'landing:index' %}">
-                        <span class="fa fa-credit-card"></span>
-                        PagoLink
-                    </a>
-                    <button class="navbar-toggler"
-                            type="button"
-                            data-toggle="collapse"
-                            data-target="#navbarSupportedContent"
-                            aria-controls="navbarSupportedContent"
-                            aria-expanded="false"
-                            aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                        <ul class="navbar-nav mr-auto">
-                            <li class="nav-item active">
-                                <a class="nav-link" href="{% url 'landing:index' %}">Inicio</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'landing:pricing' %}">Precios</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'landing:contact' %}">Contáctenos</a>
-                            </li>
-                        </ul>
-                        <div class="form-inline">
-                            <a href="{% url 'dashboard:login' %}" class="login mr-4">Inicia sesión</a>
-                            <a href="#" class="btn btn-primary btn-theme">Regístrate</a>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>
+        {% block title %}{% endblock %}
+    | PagoLink</title>
+
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet" />
+
+    <!-- Design System (Single Source of Truth) -->
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}" />
+
+    <!-- Font Awesome 5 Free -->
+    <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}" />
+
+    <!-- Landing-specific overrides -->
+    <style>
+        /* ── Navbar ── */
+        .landing-navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            padding: 1rem 0;
+            transition: background 0.35s ease, box-shadow 0.35s ease, padding 0.35s ease;
+        }
+
+        .landing-navbar.scrolled {
+            background: rgba(10, 15, 30, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+            padding: 0.6rem 0;
+        }
+
+        .landing-navbar .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-6);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .landing-navbar .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--white);
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .landing-navbar .nav-brand i {
+            font-size: 1.65rem;
+            color: var(--teal);
+        }
+
+        .landing-navbar .nav-links {
+            display: flex;
+            align-items: center;
+            gap: var(--space-6);
+            list-style: none;
+        }
+
+        .landing-navbar .nav-links a {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.92rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        .landing-navbar .nav-links a:hover {
+            color: var(--teal);
+        }
+
+        .nav-cta {
+            padding: 8px 20px !important;
+            border-radius: var(--radius-sm);
+            background: var(--teal);
+            color: var(--navy-900) !important;
+            font-weight: 600 !important;
+            transition: all var(--transition-fast) !important;
+        }
+
+        .nav-cta:hover {
+            background: var(--teal-dark);
+            color: var(--navy-900) !important;
+        }
+
+        /* Mobile nav toggle (pure CSS) */
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        @media (max-width: 992px) {
+            .nav-toggle {
+                display: block;
+            }
+
+            .landing-navbar .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(10, 15, 30, 0.98);
+                backdrop-filter: blur(12px);
+                flex-direction: column;
+                padding: var(--space-4) var(--space-6) var(--space-6);
+                gap: var(--space-4);
+                border-top: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .landing-navbar .nav-links.open {
+                display: flex;
+            }
+
+            .landing-navbar .nav-links a {
+                font-size: 1rem;
+            }
+        }
+
+        /* ── Footer ── */
+        .landing-footer {
+            background: var(--navy-900);
+            padding: var(--space-12) 0;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .landing-footer .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-6);
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: var(--space-10);
+        }
+
+        .landing-footer h6 {
+            color: var(--white);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--space-4);
+        }
+
+        .landing-footer ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .landing-footer ul li {
+            margin-bottom: var(--space-2);
+        }
+
+        .landing-footer ul li a {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: var(--font-size-sm);
+            transition: color var(--transition-fast);
+            text-decoration: none;
+        }
+
+        .landing-footer ul li a:hover {
+            color: var(--teal);
+        }
+
+        .landing-footer .footer-bottom {
+            max-width: 1200px;
+            margin: var(--space-8) auto 0;
+            padding: var(--space-6) var(--space-6) 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            text-align: center;
+            font-size: var(--font-size-xs);
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .landing-footer .footer-container {
+                grid-template-columns: 1fr;
+                gap: var(--space-6);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ Navbar ═══ -->
+    <nav class="landing-navbar" id="landingNavbar">
+        <div class="nav-container">
+            <a class="nav-brand" href="{% url 'landing:index' %}">
+                <i class="fas fa-credit-card"></i>
+                PagoLink
+            </a>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="{% url 'landing:index' %}">Inicio</a></li>
+                <li><a href="{% url 'landing:pricing' %}">Precios</a></li>
+                <li><a href="{% url 'landing:contact' %}">Contáctenos</a></li>
+                <li><a href="{% url 'dashboard:login' %}" class="nav-cta">Iniciar sesión</a></li>
+            </ul>
         </div>
-        <div class="wrapper">
-            {% block content %}{% endblock %}
-            <section class="w3l-market-footer footer-bottom">
-                <footer class="footer-28">
-                    <div class="footer-bg-layer">
-                        <div class="container py-lg-3">
-                            <div class="row footer-top-28">
-                                <div class="col-md-6 footer-list-28 mt-5">
-                                    <h6 class="footer-title-28">PagoLink</h6>
-                                    <p class="text-gray">
-                                        PagoLink permite a los vendedores pequeños, medianos y grandes
-                                        a cobrar por internet a través de un link de pago.
-                                    </p>
-                                    <div class="main-social-footer-28 mt-3">
-                                        <ul class="social-icons">
-                                        </ul>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="row">
-                                        <div class="col-md-6 footer-list-28 mt-5">
-                                            <h6 class="footer-title-28">Compañía</h6>
-                                            <ul>
-                                                <li>
-                                                    <a href="{% url 'landing:contact' %}">Contáctenos</a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'landing:pricing' %}">Precios</a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="col-md-6 footer-list-28 mt-5">
-                                            <h6 class="footer-title-28">Vendedores</h6>
-                                            <ul>
-                                                <li>
-                                                    <a href="{% url 'dashboard:login' %}">Iniciar sesión</a>
-                                                </li>
-                                                <li>
-                                                    <a href="{% url 'dashboard:register' %}">Regístrate</a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="midd-footer-28 align-center py-lg-4 py-3 mt-5">
-                            <div class="container">
-                                <p class="copy-footer-28 text-center">&copy; 2025 PagoLink. Todos los derechos reservados.</p>
-                            </div>
-                        </div>
-                    </div>
-                </footer>
-            </section>
+    </nav>
+
+    <!-- ═══ Content ═══ -->
+    {% block content %}{% endblock %}
+
+    <!-- ═══ Footer ═══ -->
+    <footer class="landing-footer">
+        <div class="footer-container">
+            <div>
+                <h6>PagoLink</h6>
+                <p style="font-size: var(--font-size-sm); line-height: 1.7; margin-bottom: var(--space-4);">
+                    PagoLink permite a los vendedores pequeños, medianos y grandes
+                    a cobrar por internet a través de un link de pago.
+                </p>
+            </div>
+            <div>
+                <h6>Compañía</h6>
+                <ul>
+                    <li><a href="{% url 'landing:contact' %}">Contáctenos</a></li>
+                    <li><a href="{% url 'landing:pricing' %}">Precios</a></li>
+                </ul>
+            </div>
+            <div>
+                <h6>Vendedores</h6>
+                <ul>
+                    <li><a href="{% url 'dashboard:login' %}">Iniciar sesión</a></li>
+                    <li><a href="{% url 'dashboard:register' %}">Regístrate</a></li>
+                </ul>
+            </div>
         </div>
-    </body>
+        <div class="footer-bottom">
+            &copy; 2025 PagoLink. Todos los derechos reservados.
+        </div>
+    </footer>
+
+    <!-- Navbar scroll behavior -->
+    <script>
+        (function() {
+            var navbar = document.getElementById('landingNavbar');
+            var toggle = document.getElementById('navToggle');
+            var links = document.getElementById('navLinks');
+
+            // Scroll effect: add background when scrolled
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 20) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+            });
+
+            // Mobile menu toggle
+            if (toggle && links) {
+                toggle.addEventListener('click', function() {
+                    links.classList.toggle('open');
+                });
+            }
+        })();
+    </script>
+</body>
 </html>
