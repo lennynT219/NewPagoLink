@@ -40,7 +40,8 @@
         border: 1px dashed var(--gray-300);
         border-radius: var(--radius-sm);
         padding: 20px;
-        position: relative;
+        position: sticky;
+        top: 80px;
     }
     .section-title {
         font-size: 1.1rem;
@@ -93,24 +94,38 @@
     .input-group-modern {
         border-radius: var(--radius-sm);
         overflow: hidden;
-        border: 1px solid var(--gray-300);
+        border: 2px solid var(--gray-200);
         transition: all var(--transition-fast);
+        background: var(--white);
     }
     .input-group-modern:focus-within {
         border-color: var(--teal);
         box-shadow: 0 0 0 4px rgba(0, 201, 167, 0.1);
     }
-    .input-group-modern .input-group-text {
-        background-color: var(--white);
+    .input-group-modern .input-group-prepend .input-group-text {
+        background-color: var(--gray-50);
         border: none;
+        border-right: 1px solid var(--gray-200);
         color: var(--gray-400);
+        padding: 0 16px;
+        font-size: 1rem;
     }
     .input-group-modern .form-control {
-        border: none;
-        padding-left: 0;
+        border: none !important;
+        padding: 14px 16px !important;
+        font-size: 0.95rem !important;
+        height: 50px !important;
+        background: var(--white);
+        color: var(--gray-800);
+        box-shadow: none !important;
     }
     .input-group-modern .form-control:focus {
         box-shadow: none;
+        outline: none;
+    }
+    .input-group-modern select.form-control {
+        height: 50px !important;
+        padding: 0 16px !important;
     }
     .section-header {
         text-align: center;

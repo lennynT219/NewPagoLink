@@ -54,6 +54,18 @@ class BankListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
   context_object_name = 'banks'
 
 
+class BankDeleteView(LoginRequiredMixin, AdminRequiredMixin, DetailView):
+  """Vista administrativa para eliminar un banco."""
+  model = Bank
+  http_method_names = ['post']
+
+  def post(self, request, *args, **kwargs):
+    bank = self.get_object()
+    bank.delete()
+    messages.success(request, f'Banco "{bank.title}" eliminado exitosamente.')
+    return redirect('banking:bank_list')
+
+
 class BankCreateView(LoginRequiredMixin, AdminRequiredMixin, CreateView):
   """Vista administrativa para registrar nuevos bancos."""
   model = Bank

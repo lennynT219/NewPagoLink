@@ -44,9 +44,12 @@
                         <td>{{ bank.id }}</td>
                         <td>{{ bank.title }}</td>
                         <td>
-                            <button class="btn-secondary" style="padding: 4px 12px; font-size: var(--font-size-xs); border-width: 1px;">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <form method="post" action="{% url 'banking:bank_delete' bank.id %}" style="display:inline;" onsubmit="return confirm('¿Eliminar {{ bank.title|escapejs }}?')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-secondary" style="padding: 4px 12px; font-size: var(--font-size-xs); border-width: 1px; color: var(--danger); border-color: var(--danger);">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% empty %}
