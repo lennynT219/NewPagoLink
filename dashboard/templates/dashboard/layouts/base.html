@@ -76,14 +76,27 @@
             font-size: 1.5rem;
             transition: color var(--transition-fast);
             cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
         }
 
-        .dashboard-navbar-user-btn:hover {
+        .dashboard-navbar-user-btn:hover,
+        .dashboard-navbar-user-btn:focus {
             color: var(--white);
+            outline: none;
         }
 
-        /* Dropdown menu restyling (Bootstrap dropdown JS still used) */
-        .dashboard-navbar .dropdown-menu {
+        /* Pure CSS dropdown — no Bootstrap JS needed */
+        .user-dropdown {
+            position: relative;
+        }
+
+        .user-dropdown .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
             background: var(--white);
             border: none;
             border-radius: var(--radius);
@@ -91,6 +104,24 @@
             padding: var(--space-2) 0;
             margin-top: var(--space-3);
             min-width: 220px;
+            z-index: 1060;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .user-dropdown.active .dropdown-menu,
+        .user-dropdown .dropdown-btn:focus + .dropdown-menu,
+        .user-dropdown .dropdown-menu:hover {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Keep menu open while hovering it */
+        .user-dropdown .dropdown-menu:hover {
+            display: block;
+            opacity: 1;
         }
 
         .dashboard-navbar .dropdown-header {
@@ -333,12 +364,13 @@
             </div>
 
             <div class="dashboard-navbar-actions">
-                <!-- User dropdown -->
-                <div class="dropdown">
-                    <a href="#" class="dashboard-navbar-user-btn dropdown-toggle" data-toggle="dropdown" role="button"
-                       aria-haspopup="true" aria-expanded="false" id="userDropdown" data-offset="0,10">
+                <!-- User dropdown (pure CSS + minimal JS) -->
+                <div class="user-dropdown" id="userDropdown">
+                    <button class="dashboard-navbar-user-btn dropdown-btn" type="button"
+                            onclick="var d=document.getElementById('userDropdown');d.classList.toggle('active');event.stopPropagation();"
+                            aria-label="Menú de usuario">
                         <i class="far fa-user-circle"></i>
-                    </a>
+                    </button>
                     <div class="dropdown-menu dropdown-menu-right">
                         <span class="dropdown-header">{{ request.user.get_full_name|default:request.user.username }}</span>
                         <div class="dropdown-divider"></div>
@@ -376,9 +408,18 @@
 
     </div>
 
-    <!-- Scripts: kept for sidebar toggle (mobile), Bootstrap dropdowns -->
+    <!-- Scripts: kept for sidebar toggle (mobile) -->
     <script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
     <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script>
+        // Close user dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            var dd = document.getElementById('userDropdown');
+            if (dd && !dd.contains(e.target)) {
+                dd.classList.remove('active');
+            }
+        });
+    </script>
     {% block javascript %}{% endblock %}
 </body>
 </html>
