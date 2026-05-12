@@ -4,16 +4,47 @@ from .models import CustomUser
 
 class UserProfileForm(forms.ModelForm):
   """Formulario para editar datos básicos del usuario."""
-  firstname = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
-  lastname = forms.CharField(max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
-  phone = forms.CharField(max_length=10, widget=forms.TextInput(attrs={'class': 'form-control'}))
-  identification = forms.IntegerField(widget=forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+  firstname = forms.CharField(
+    max_length=150,
+    widget=forms.TextInput(attrs={
+      'class': 'input-modern',
+      'placeholder': 'Tu nombre',
+      'autocomplete': 'given-name',
+    }),
+  )
+  lastname = forms.CharField(
+    max_length=150,
+    widget=forms.TextInput(attrs={
+      'class': 'input-modern',
+      'placeholder': 'Tu apellido',
+      'autocomplete': 'family-name',
+    }),
+  )
+  phone = forms.CharField(
+    max_length=10,
+    widget=forms.TextInput(attrs={
+      'class': 'input-modern',
+      'placeholder': '09XXXXXXXX',
+      'autocomplete': 'tel',
+    }),
+  )
+  identification = forms.IntegerField(
+    widget=forms.NumberInput(attrs={
+      'class': 'input-modern',
+      'readonly': 'readonly',
+      'style': 'background: var(--gray-100); color: var(--gray-500); cursor: not-allowed;',
+    }),
+  )
 
   class Meta:
     model = User
     fields = ['email']
     widgets = {
-      'email': forms.EmailInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+      'email': forms.EmailInput(attrs={
+        'class': 'input-modern',
+        'readonly': 'readonly',
+        'style': 'background: var(--gray-100); color: var(--gray-500); cursor: not-allowed;',
+      }),
     }
 
   def __init__(self, *args, **kwargs):
