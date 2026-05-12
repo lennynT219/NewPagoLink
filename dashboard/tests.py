@@ -654,3 +654,421 @@ class AccountsProfileFormTemplateTests(TestCase):
         for ref in form_field_refs:
             self.assertIn(ref, self.content,
                           f'Missing form field: {ref}')
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Phase 6: Bug Fixes and Cleanup
+# ══════════════════════════════════════════════════════════════════════
+
+# ── T6.1: Delete legacy auth templates (login.html, register.html) ──
+
+
+class LegacyAuthTemplateCleanupTests(TestCase):
+    """T6.1: Verify legacy login.html and register.html are deleted."""
+
+    def test_legacy_login_template_does_not_exist(self):
+        self.assertFalse(
+            _template_exists('dashboard', 'dashboard/login.html'),
+            'Legacy login.html must be deleted; auth.html replaces it'
+        )
+
+    def test_legacy_register_template_does_not_exist(self):
+        self.assertFalse(
+            _template_exists('dashboard', 'dashboard/register.html'),
+            'Legacy register.html must be deleted; auth.html replaces it'
+        )
+
+    def test_auth_template_still_exists(self):
+        self.assertTrue(
+            _template_exists('dashboard', 'dashboard/auth.html'),
+            'auth.html must be preserved as the sole auth template'
+        )
+
+    def test_auth_has_login_context(self):
+        content = _read_template('dashboard', 'dashboard/auth.html')
+        self.assertIn('login_form', content)
+        self.assertIn("url 'dashboard:login'", content)
+
+    def test_auth_has_register_context(self):
+        content = _read_template('dashboard', 'dashboard/auth.html')
+        self.assertIn('register_form', content)
+        self.assertIn("url 'dashboard:register'", content)
+
+
+# ── T6.2: Fix reset_password.html ──
+
+
+class ResetPasswordFixTests(TestCase):
+    """T6.2: Verify reset_password.html is fixed with design-system styling."""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/reset_password.html')
+
+    def test_reset_extends_landing_base(self):
+        self.assertIn('landing/layouts/base.html', self.content)
+
+    def test_reset_uses_card_modern(self):
+        self.assertIn('card-modern', self.content)
+
+    def test_reset_uses_btn_primary_auth(self):
+        self.assertIn('btn-primary-auth', self.content)
+
+    def test_reset_uses_btn_primary_auth_link(self):
+        """ResetPassword view has no form/post — template is a link-only page."""
+        self.assertIn('btn-primary-auth', self.content)
+        self.assertIn('dashboard:password_reset', self.content)
+
+    def test_reset_removes_adminlte(self):
+        self.assertNotIn('adminlte', self.content)
+
+    def test_reset_removes_broken_static_path(self):
+        self.assertNotIn('dashboard/plugins/', self.content)
+        self.assertNotIn('dashboard/css/', self.content)
+        self.assertNotIn('dashboard/js/', self.content)
+
+    def test_reset_links_to_actual_password_reset(self):
+        """ResetPassword view has no form/post — template links to real password_reset."""
+        self.assertIn('dashboard:password_reset', self.content)
+
+    def test_reset_links_to_login(self):
+        """ResetPassword page must link back to login."""
+        self.assertIn('dashboard:login', self.content)
+
+    def test_reset_has_password_reset_title(self):
+        self.assertIn('Restablecer', self.content)
+        self.assertIn('contrase', self.content)
+
+
+# ── T6.3: Update password_reset_*.html templates ──
+
+
+class PasswordResetFormTests(TestCase):
+    """T6.3a: password_reset_form.html"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/registration/password_reset_form.html')
+
+    def test_extends_landing_base(self):
+        self.assertIn('landing/layouts/base.html', self.content)
+
+    def test_uses_card_modern(self):
+        self.assertIn('card-modern', self.content)
+
+    def test_uses_btn_primary_auth(self):
+        self.assertIn('btn-primary-auth', self.content)
+
+    def test_uses_input_modern(self):
+        self.assertIn('input-modern', self.content)
+
+    def test_removes_adminlte(self):
+        self.assertNotIn('adminlte', self.content)
+
+    def test_removes_hold_transition_class(self):
+        self.assertNotIn('hold-transition', self.content)
+
+    def test_preserves_csrf(self):
+        self.assertIn('csrf_token', self.content)
+
+    def test_preserves_email_input(self):
+        self.assertIn('name="email"', self.content)
+
+    def test_preserves_login_url(self):
+        self.assertIn("url 'dashboard:login'", self.content)
+
+
+class PasswordResetDoneTests(TestCase):
+    """T6.3b: password_reset_done.html"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/registration/password_reset_done.html')
+
+    def test_extends_landing_base(self):
+        self.assertIn('landing/layouts/base.html', self.content)
+
+    def test_uses_card_modern(self):
+        self.assertIn('card-modern', self.content)
+
+    def test_has_success_message(self):
+        self.assertIn('enviado', self.content.lower())
+        self.assertIn('correo', self.content.lower())
+
+    def test_has_login_url(self):
+        self.assertIn("url 'dashboard:login'", self.content)
+
+    def test_removes_adminlte(self):
+        self.assertNotIn('adminlte', self.content)
+
+    def test_removes_hold_transition(self):
+        self.assertNotIn('hold-transition', self.content)
+
+
+class PasswordResetConfirmTests(TestCase):
+    """T6.3c: password_reset_confirm.html"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/registration/password_reset_confirm.html')
+
+    def test_extends_landing_base(self):
+        self.assertIn('landing/layouts/base.html', self.content)
+
+    def test_uses_card_modern(self):
+        self.assertIn('card-modern', self.content)
+
+    def test_uses_btn_primary_auth(self):
+        self.assertIn('btn-primary-auth', self.content)
+
+    def test_removes_adminlte(self):
+        self.assertNotIn('adminlte', self.content)
+
+    def test_preserves_validlink_condition(self):
+        self.assertIn('validlink', self.content)
+
+    def test_preserves_csrf(self):
+        self.assertIn('csrf_token', self.content)
+
+    def test_preserves_form_as_p(self):
+        self.assertIn('form.as_p', self.content)
+
+    def test_preserves_password_reset_url(self):
+        self.assertIn("url 'dashboard:password_reset'", self.content)
+
+
+class PasswordResetCompleteTests(TestCase):
+    """T6.3d: password_reset_complete.html"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/registration/password_reset_complete.html')
+
+    def test_extends_landing_base(self):
+        self.assertIn('landing/layouts/base.html', self.content)
+
+    def test_uses_card_modern(self):
+        self.assertIn('card-modern', self.content)
+
+    def test_has_success_title(self):
+        self.assertIn('cambiada', self.content.lower())
+
+    def test_has_login_url(self):
+        self.assertIn("url 'dashboard:login'", self.content)
+
+    def test_removes_adminlte(self):
+        self.assertNotIn('adminlte', self.content)
+
+    def test_removes_hold_transition(self):
+        self.assertNotIn('hold-transition', self.content)
+
+
+class PasswordResetEmailTests(TestCase):
+    """T6.3e: password_reset_email.html (plain text, no AdminLTE concerns)"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/registration/password_reset_email.html')
+
+    def test_preserves_uid_token_variables(self):
+        self.assertIn('uid', self.content)
+        self.assertIn('token', self.content)
+
+    def test_preserves_protocol_domain(self):
+        self.assertIn('protocol', self.content)
+        self.assertIn('domain', self.content)
+
+    def test_preserves_password_reset_url(self):
+        self.assertIn("url 'dashboard:password_reset_confirm'", self.content)
+
+    def test_has_pagolink_brand(self):
+        self.assertIn('PagoLink', self.content)
+
+    def test_removes_express_branding(self):
+        self.assertNotIn('Express', self.content)
+
+
+# ── T6.4: Update activation pages ──
+
+
+class ActivationSuccessTests(TestCase):
+    """T6.4a: activation_success.html"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/activation_success.html')
+
+    def test_extends_landing_base(self):
+        self.assertIn('landing/layouts/base.html', self.content)
+
+    def test_uses_card_modern(self):
+        self.assertIn('card-modern', self.content)
+
+    def test_uses_btn_primary_auth(self):
+        self.assertIn('btn-primary-auth', self.content)
+
+    def test_has_green_success_icon(self):
+        self.assertIn('check-circle', self.content)
+        self.assertIn('success', self.content)
+
+    def test_has_dashboard_link(self):
+        self.assertIn("url 'dashboard", self.content)
+
+    def test_removes_bootstrap_btn_primary(self):
+        self.assertNotIn('btn btn-primary', self.content)
+
+    def test_preserves_title_block(self):
+        self.assertIn('title', self.content)
+
+
+class ActivationInvalidTests(TestCase):
+    """T6.4b: activation_invalid.html"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/activation_invalid.html')
+
+    def test_extends_landing_base(self):
+        self.assertIn('landing/layouts/base.html', self.content)
+
+    def test_uses_card_modern(self):
+        self.assertIn('card-modern', self.content)
+
+    def test_has_warning_danger_content(self):
+        self.assertIn('Inv', self.content)
+        self.assertIn('lido', self.content.lower())
+
+    def test_has_register_link(self):
+        self.assertIn("url 'dashboard:register'", self.content)
+
+    def test_removes_bootstrap_secondary(self):
+        self.assertNotIn('btn btn-secondary', self.content)
+
+    def test_preserves_title_block(self):
+        self.assertIn('title', self.content)
+
+
+# ── T6.5: Branded email master template ──
+
+
+class BrandedEmailBaseTests(TestCase):
+    """T6.5a: base_email.html"""
+
+    @property
+    def content(self):
+        base = Path(settings.BASE_DIR) / 'templates' / 'emails' / 'base_email.html'
+        return base.read_text()
+
+    def test_has_doctype_html(self):
+        self.assertIn('<!DOCTYPE html>', self.content)
+
+    def test_has_navy_brand_color(self):
+        self.assertIn('162447', self.content)
+
+    def test_has_teal_accent(self):
+        self.assertIn('00c9a7', self.content)
+
+    def test_has_content_block(self):
+        self.assertIn('block content', self.content)
+
+    def test_has_pagolink_branding(self):
+        self.assertIn('PagoLink', self.content)
+
+
+class ActivationEmailExtendsBaseTests(TestCase):
+    """T6.5b: activation_email.html extends base_email.html"""
+
+    @property
+    def content(self):
+        return _read_template('dashboard', 'dashboard/activation_email.html')
+
+    def test_extends_base_email(self):
+        self.assertIn("emails/base_email.html", self.content)
+
+    def test_uses_content_block(self):
+        self.assertIn('block content', self.content)
+
+    def test_preserves_user_variable(self):
+        self.assertIn('user.first_name', self.content)
+
+    def test_preserves_uid_token(self):
+        self.assertIn('uid', self.content)
+        self.assertIn('token', self.content)
+
+    def test_preserves_domain(self):
+        self.assertIn('domain', self.content)
+
+
+class InviteEmailExtendsBaseTests(TestCase):
+    """T6.5c: invite_email.html extends base_email.html"""
+
+    @property
+    def content(self):
+        return _read_template('payments', 'payments/emails/invite_email.html')
+
+    def test_extends_base_email(self):
+        self.assertIn("emails/base_email.html", self.content)
+
+    def test_uses_content_block(self):
+        self.assertIn('block content', self.content)
+
+    def test_preserves_payment_variables(self):
+        self.assertIn('payment.first_name', self.content)
+        self.assertIn('payment.description', self.content)
+        self.assertIn('payment.amount', self.content)
+
+    def test_preserves_pay_url(self):
+        self.assertIn('pay_url', self.content)
+
+
+class ConfirmationEmailExtendsBaseTests(TestCase):
+    """T6.5d: confirmation_email.html extends base_email.html"""
+
+    @property
+    def content(self):
+        return _read_template('payments', 'payments/emails/confirmation_email.html')
+
+    def test_extends_base_email(self):
+        self.assertIn("emails/base_email.html", self.content)
+
+    def test_uses_content_block(self):
+        self.assertIn('block content', self.content)
+
+    def test_preserves_payment_variables(self):
+        self.assertIn('payment.first_name', self.content)
+        self.assertIn('payment.description', self.content)
+        self.assertIn('payment.amount', self.content)
+
+    def test_preserves_transaction_id(self):
+        self.assertIn('transaction_id', self.content)
+
+
+# ── T6.6: Remove unused AdminLTE static assets ──
+
+
+class AdminLTEAssetCleanupTests(TestCase):
+    """T6.6: Verify AdminLTE assets are removed."""
+
+    def test_adminlte_css_removed(self):
+        path = Path(settings.BASE_DIR) / 'dashboard' / 'static' / 'css' / 'adminlte.min.css'
+        self.assertFalse(path.exists(), 'adminlte.min.css must be removed')
+
+    def test_adminlte_js_removed(self):
+        path = Path(settings.BASE_DIR) / 'dashboard' / 'static' / 'js' / 'adminlte.min.js'
+        self.assertFalse(path.exists(), 'adminlte.min.js must be removed')
+
+    def test_icheck_bootstrap_removed(self):
+        path = Path(settings.BASE_DIR) / 'dashboard' / 'static' / 'plugins' / 'icheck-bootstrap'
+        self.assertFalse(path.exists(), 'icheck-bootstrap directory must be removed')
+
+    def test_fontawesome_still_exists(self):
+        path = Path(settings.BASE_DIR) / 'dashboard' / 'static' / 'plugins' / 'fontawesome-free'
+        self.assertTrue(path.exists(), 'fontawesome-free must be preserved')
+
+    def test_jquery_still_exists(self):
+        path = Path(settings.BASE_DIR) / 'dashboard' / 'static' / 'plugins' / 'jquery'
+        self.assertTrue(path.exists(), 'jquery must be preserved')
+
+    def test_bootstrap_still_exists(self):
+        path = Path(settings.BASE_DIR) / 'dashboard' / 'static' / 'plugins' / 'bootstrap'
+        self.assertTrue(path.exists(), 'bootstrap must be preserved')

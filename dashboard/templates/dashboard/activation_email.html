@@ -1,28 +1,30 @@
-<!DOCTYPE html>
-<html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <title>Activación de Cuenta</title>
-    </head>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-        <h2>¡Bienvenido a PagoLink, {{ user.first_name }}!</h2>
-        <p>Gracias por registrarte. Por favor, haz clic en el enlace de abajo para activar tu cuenta:</p>
-        <p style="text-align: center; margin: 25px 0;">
-            <a href="http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}"
-               style="background-color: #007bff;
-                      color: white;
-                      padding: 12px 20px;
-                      text-decoration: none;
-                      border-radius: 5px">Activar mi Cuenta</a>
-        </p>
-        <p>Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
-        <p>
-            <code>http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}</code>
-        </p>
-        <p>
-            Saludos,
-            <br>
-            El equipo de PagoLink
-        </p>
-    </body>
-</html>
+{% extends "emails/base_email.html" %}
+{% block title %}Activación de Cuenta{% endblock %}
+{% block content %}
+    <h2 style="color: #162447; font-size: 20px; margin: 0 0 16px 0;">
+        ¡Bienvenido a PagoLink, {{ user.first_name }}!
+    </h2>
+    <p style="color: #374151; font-size: 15px; margin: 0 0 20px 0;">
+        Gracias por registrarte. Por favor, haz clic en el enlace de abajo para activar tu cuenta:
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center" style="padding: 16px 0 24px;">
+                <a href="http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}"
+                   style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #00c9a7, #00b392); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; letter-spacing: 0.3px;">
+                    Activar mi Cuenta
+                </a>
+            </td>
+        </tr>
+    </table>
+    <p style="color: #64748b; font-size: 13px; margin: 0 0 8px 0;">
+        Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:
+    </p>
+    <p style="background-color: #f5f6fa; padding: 12px 16px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #64748b; word-break: break-all; margin: 0 0 20px 0;">
+        http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}
+    </p>
+    <p style="color: #374151; font-size: 15px; margin: 0;">
+        Saludos,<br>
+        El equipo de PagoLink
+    </p>
+{% endblock %}

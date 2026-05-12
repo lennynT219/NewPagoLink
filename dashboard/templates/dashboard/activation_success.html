@@ -3,16 +3,33 @@
     Activación de correo exitosa
 {% endblock title %}
 {% block content %}
-    <div class="container mt-5 main">
+    <div class="page-hero" style="padding: var(--space-12) 0; min-height: 30vh;">
+        <div class="page-hero-content">
+            <h1 class="page-hero-title" style="font-size: var(--font-size-3xl);">Activación Exitosa</h1>
+            <p class="page-hero-subtitle">Tu cuenta está lista para usar</p>
+        </div>
+    </div>
+    <div class="section-container">
         <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card text-center shadow-sm">
-                    <div class="card-body p-5">
-                        <h1 class="h3 mb-3 fw-normal text-success">¡Cuenta Activada!</h1>
-                        <p>Tu cuenta ha sido activada exitosamente.</p>
-                        <p>Ya hemos iniciado sesión por ti. Puedes ir directamente a tu panel de control.</p>
-                        <a href="{% url 'dashboard:login' %}" class="btn btn-primary mt-3">Ir al Dashboard</a>
+            <div class="col-md-6 col-lg-5">
+                <div class="card-modern text-center">
+                    <div style="font-size: 3rem; color: var(--success); margin-bottom: var(--space-4);">
+                        <i class="fas fa-check-circle"></i>
                     </div>
+                    <h3 style="font-size: var(--font-size-xl); color: var(--navy-900); margin-bottom: var(--space-2);">
+                        ¡Cuenta Activada!
+                    </h3>
+                    <p class="text-gray mb-3">
+                        Tu cuenta ha sido activada exitosamente.
+                    </p>
+                    <p class="text-gray mb-4">
+                        Ya hemos iniciado sesión por ti. Puedes ir directamente a tu panel de control.
+                    </p>
+                    <a href="{% url 'dashboard:dashboard' %}"
+                       class="btn-primary-auth"
+                       style="text-decoration: none;">
+                        <i class="fas fa-tachometer-alt" style="margin-right: 8px;"></i>Ir al Dashboard
+                    </a>
                 </div>
             </div>
         </div>
