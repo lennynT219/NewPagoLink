@@ -1,15 +1,22 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>{% if active_tab == 'register' %}Registro{% else %}Iniciar sesión{% endif %} | PagoLink</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>
+            {% if active_tab == 'register' %}
+                Registro
+            {% else %}
+                Iniciar sesión
+            {% endif %}
+        | PagoLink</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet"
+              href="{% static 'plugins/fontawesome-free/css/all.min.css' %}">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+              rel="stylesheet">
+        <style>
         :root {
             --navy-900: #0a0f1e;
             --navy-800: #0f1b35;
@@ -194,6 +201,7 @@
             opacity: 0;
             transform: translateX(-30px);
             pointer-events: none;
+            display: none;
         }
 
         #auth-toggle:checked ~ .auth-card .form-page-register {
@@ -429,160 +437,138 @@
             .input-group-icon input { padding: 10px 14px 10px 38px; }
             .form-links { margin-top: 0.5rem; }
         }
-    </style>
-</head>
-<body>
-
-    <!-- Hidden toggle: unchecked=login, checked=register -->
-    <input type="checkbox" id="auth-toggle" class="hidden-toggle"
-           {% if active_tab == 'register' %}checked{% endif %}>
-
-    <div class="auth-card">
-
-        <!-- ═══ Left: Brand Panel ═══ -->
-        <div class="brand-panel">
-            <div class="brand-content">
-                <div class="brand-logo">
-                    <i class="fas fa-credit-card"></i>
-                </div>
-
-                <!-- Login message -->
-                <div class="brand-msg brand-msg-login">
-                    <h2 class="brand-title">Pago<span>Link</span></h2>
-                    <p class="brand-subtitle">Tu aliado en pagos digitales.<br>Rápido, seguro, confiable.</p>
-                </div>
-
-                <!-- Register message -->
-                <div class="brand-msg brand-msg-register">
-                    <h2 class="brand-title">Únete a Pago<span>Link</span></h2>
-                    <p class="brand-subtitle">Crea tu cuenta y empieza a<br>generar links de pago hoy.</p>
-                </div>
-
-                <div class="brand-dots">
-                    <span class="active"></span>
-                    <span></span>
-                    <span></span>
+        </style>
+    </head>
+    <body>
+        <!-- Hidden toggle: unchecked=login, checked=register -->
+        <input type="checkbox"
+               id="auth-toggle"
+               class="hidden-toggle"
+               {% if active_tab == 'register' %}checked{% endif %}>
+        <div class="auth-card">
+            <!-- ═══ Left: Brand Panel ═══ -->
+            <div class="brand-panel">
+                <div class="brand-content">
+                    <div class="brand-logo">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <!-- Login message -->
+                    <div class="brand-msg brand-msg-login">
+                        <h2 class="brand-title">
+                            Pago<span>Link</span>
+                        </h2>
+                        <p class="brand-subtitle">
+                            Tu aliado en pagos digitales.
+                            <br>
+                            Rápido, seguro, confiable.
+                        </p>
+                    </div>
+                    <!-- Register message -->
+                    <div class="brand-msg brand-msg-register">
+                        <h2 class="brand-title">
+                            Únete a Pago<span>Link</span>
+                        </h2>
+                        <p class="brand-subtitle">
+                            Crea tu cuenta y empieza a
+                            <br>
+                            generar links de pago hoy.
+                        </p>
+                    </div>
+                    <div class="brand-dots">
+                        <span class="active"></span>
+                        <span></span>
+                        <span></span>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- ═══ Right: Form Panel ═══ -->
-        <div class="form-panel">
-            <!-- Tab Switcher -->
-            <div class="tab-switcher">
-                <label class="tab-btn tab-login"
-                       onclick="document.getElementById('auth-toggle').checked=false">
-                    Iniciar sesión
-                </label>
-                <label class="tab-btn tab-register"
-                       onclick="document.getElementById('auth-toggle').checked=true">
-                    Registrarse
-                </label>
-            </div>
-
-            <!-- ═══ Forms ═══ -->
-
+            <!-- ═══ Right: Form Panel ═══ -->
+            <div class="form-panel">
+                <!-- Tab Switcher -->
+                <div class="tab-switcher">
+                    <label class="tab-btn tab-login"
+                           onclick="document.getElementById('auth-toggle').checked=false">Iniciar sesión</label>
+                    <label class="tab-btn tab-register"
+                           onclick="document.getElementById('auth-toggle').checked=true">Registrarse</label>
+                </div>
+                <!-- ═══ Forms ═══ -->
                 <!-- ── LOGIN ── -->
                 <div class="form-page form-page-login">
                     <h3>Bienvenido de nuevo</h3>
                     <p class="form-subtitle">Ingresá tus credenciales para acceder</p>
-
                     <form method="post" action="{% url 'dashboard:login' %}" novalidate>
                         {% csrf_token %}
-
                         {% if login_form.non_field_errors %}
                             <div class="alert-error">
-                                {% for error in login_form.non_field_errors %}
-                                    <div>{{ error }}</div>
-                                {% endfor %}
+                                {% for error in login_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
                             </div>
                         {% endif %}
-
                         <div class="input-group-icon">
                             <i class="fas fa-envelope"></i>
                             {{ login_form.username }}
                         </div>
-
                         <div class="input-group-icon">
                             <i class="fas fa-lock"></i>
                             {{ login_form.password }}
                         </div>
-
                         <button type="submit" class="btn-primary-auth">
                             <i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>Ingresar
                         </button>
-
                         <div class="form-links">
                             <a href="{% url 'dashboard:password_reset' %}">¿Olvidaste tu contraseña?</a>
                         </div>
                     </form>
                 </div>
-
                 <!-- ── REGISTER ── -->
                 <div class="form-page form-page-register">
                     <h3>Creá tu cuenta</h3>
                     <p class="form-subtitle">Completá tus datos para empezar</p>
-
                     <form method="post" action="{% url 'dashboard:register' %}" novalidate>
                         {% csrf_token %}
-
                         {% if register_form.errors %}
                             <div class="alert-error">
                                 <ul>
-                                    {% for error in register_form.non_field_errors %}
-                                        <li>{{ error }}</li>
-                                    {% endfor %}
+                                    {% for error in register_form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
                                     {% for field in register_form %}
-                                        {% for error in field.errors %}
-                                            <li>{{ field.label }}: {{ error }}</li>
-                                        {% endfor %}
+                                        {% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}
                                     {% endfor %}
                                 </ul>
                             </div>
                         {% endif %}
-
                         <div class="input-group-icon">
                             <i class="fas fa-user"></i>
                             {{ register_form.firstname }}
                         </div>
-
                         <div class="input-group-icon">
                             <i class="fas fa-user"></i>
                             {{ register_form.lastname }}
                         </div>
-
                         <div class="input-group-icon">
                             <i class="fas fa-id-card"></i>
                             {{ register_form.identification }}
                         </div>
-
                         <div class="input-group-icon">
                             <i class="fas fa-phone"></i>
                             {{ register_form.phone }}
                         </div>
-
                         <div class="input-group-icon">
                             <i class="fas fa-envelope"></i>
                             {{ register_form.email }}
                         </div>
-
                         <div class="input-group-icon">
                             <i class="fas fa-lock"></i>
                             {{ register_form.password }}
                         </div>
-
                         <button type="submit" class="btn-primary-auth">
                             <i class="fas fa-user-plus" style="margin-right:8px;"></i>Crear cuenta
                         </button>
                     </form>
                 </div>
-
-            </div><!-- /form-panel -->
-
-    </div><!-- /auth-card -->
-
-    <!-- Font Awesome -->
-    <script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
-    <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-</body>
+            </div>
+            <!-- /form-panel -->
+        </div>
+        <!-- /auth-card -->
+        <!-- Font Awesome -->
+        <script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
+        <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    </body>
 </html>
