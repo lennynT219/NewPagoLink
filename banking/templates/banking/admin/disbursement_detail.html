@@ -4,110 +4,144 @@
 {% block title %}Procesar Desembolso{% endblock %}
 
 {% block content %}
-<section class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1>Detalle de Solicitud de Desembolso</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{% url 'dashboard:dashboard' %}">Inicio</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'banking:admin_disbursement_list' %}">Desembolsos</a></li>
-                    <li class="breadcrumb-item active">Procesar</li>
-                </ol>
-            </div>
-        </div>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-6">
+    <div>
+        <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--navy-900); margin: 0;">
+            Detalle de Solicitud de Desembolso
+            <span class="badge-status" style="background: var(--danger-light); color: var(--danger); font-size: 10px; margin-left: var(--space-2); vertical-align: middle;">
+                <i class="fas fa-shield-alt" style="margin-right: 3px;"></i>Admin
+            </span>
+        </h1>
+        <p style="color: var(--gray-500); margin: 4px 0 0 0; font-size: var(--font-size-sm);">
+            <a href="{% url 'dashboard:dashboard' %}" style="color: var(--gray-400);">Inicio</a>
+            <span style="color: var(--gray-300);"> / </span>
+            <a href="{% url 'banking:admin_disbursement_list' %}" style="color: var(--gray-400);">Desembolsos</a>
+            <span style="color: var(--gray-300);"> / </span>
+            Procesar
+        </p>
     </div>
-</section>
+</div>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card card-primary card-outline">
-                    <div class="card-body box-profile">
-                        <div class="text-center">
-                            <i class="fas fa-user-circle fa-4x text-primary"></i>
-                        </div>
-                        <h3 class="profile-username text-center">{{ disbursement.vendor.user.get_full_name }}</h3>
-                        <p class="text-muted text-center">{{ disbursement.vendor.user.email }}</p>
-                        <ul class="list-group list-group-unbordered mb-3">
-                            <li class="list-group-item">
-                                <b>Saldo Actual</b> <a class="float-right text-success font-weight-bold">${{ disbursement.vendor.available_balance }}</a>
-                            </li>
-                            <li class="list-group-item">
-                                <b>Monto Solicitado</b> <a class="float-right text-primary font-weight-bold">${{ disbursement.amount }}</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+<div class="row">
+    <!-- Left Column: Vendor Info -->
+    <div class="col-md-4">
+        <div class="card-modern text-center">
+            <div style="margin-bottom: var(--space-4);">
+                <i class="fas fa-user-circle" style="font-size: 4rem; color: var(--teal);"></i>
             </div>
+            <h3 style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--navy-900); margin-bottom: var(--space-1);">
+                {{ disbursement.vendor.user.get_full_name }}
+            </h3>
+            <p style="color: var(--gray-500); font-size: var(--font-size-sm); margin-bottom: var(--space-5);">
+                {{ disbursement.vendor.user.email }}
+            </p>
 
-            <div class="col-md-8">
-                <div class="card card-info card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-university mr-2"></i>Datos Bancarios del Vendedor</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <strong><i class="fas fa-university mr-1"></i> Banco</strong>
-                                <p class="text-muted">{{ disbursement.method.bank.title }}</p>
-                            </div>
-                            <div class="col-sm-6">
-                                <strong><i class="fas fa-file-invoice-dollar mr-1"></i> Tipo de Cuenta</strong>
-                                <p class="text-muted">{{ disbursement.method.get_account_type_display }}</p>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <strong><i class="fas fa-hashtag mr-1"></i> Número de Cuenta</strong>
-                                <p class="text-muted">{{ disbursement.method.account_number }}</p>
-                            </div>
-                            <div class="col-sm-6">
-                                <strong><i class="fas fa-id-card mr-1"></i> Titular</strong>
-                                <p class="text-muted">{{ disbursement.method.fullname }}</p>
-                            </div>
-                        </div>
-                    </div>
+            <div style="background: var(--gray-50); border-radius: var(--radius-sm); padding: var(--space-4);">
+                <div class="d-flex justify-content-between align-items-center" style="margin-bottom: var(--space-3);">
+                    <span style="font-weight: var(--font-weight-medium); color: var(--gray-600); font-size: var(--font-size-sm);">Saldo Actual</span>
+                    <span style="font-weight: var(--font-weight-bold); color: var(--success);">${{ disbursement.vendor.available_balance }}</span>
                 </div>
-
-                <div class="card card-dark card-outline">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-cogs mr-2"></i>Acción Administrativa</h3>
-                    </div>
-                    <form method="POST">
-                        {% csrf_token %}
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label>Motivo de rechazo (Opcional)</label>
-                                <textarea name="rejection_reason" class="form-control" rows="2" placeholder="Solo si rechaza la solicitud..."></textarea>
-                            </div>
-                            <div class="alert alert-warning py-2 small">
-                                <i class="fas fa-exclamation-triangle mr-2"></i>
-                                Al aprobar, se descontará automáticamente el monto del saldo del vendedor.
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="row">
-                                <div class="col-6">
-                                    <button type="submit" name="action" value="approve" class="btn btn-success btn-block" onclick="return confirm('¿Está seguro de APROBAR este desembolso?')">
-                                        <i class="fas fa-check-circle mr-1"></i> Aprobar Desembolso
-                                    </button>
-                                </div>
-                                <div class="col-6">
-                                    <button type="submit" name="action" value="reject" class="btn btn-danger btn-block" onclick="return confirm('¿Está seguro de RECHAZAR esta solicitud?')">
-                                        <i class="fas fa-times-circle mr-1"></i> Rechazar Solicitud
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span style="font-weight: var(--font-weight-medium); color: var(--gray-600); font-size: var(--font-size-sm);">Monto Solicitado</span>
+                    <span style="font-weight: var(--font-weight-bold); color: var(--teal);">${{ disbursement.amount }}</span>
                 </div>
             </div>
         </div>
     </div>
-</section>
+
+    <!-- Right Column: Bank Details + Actions -->
+    <div class="col-md-8">
+        <!-- Bank Details Card -->
+        <div class="card-modern" style="margin-bottom: var(--space-6);">
+            <div style="border-bottom: 1px solid var(--gray-100); padding-bottom: var(--space-4); margin-bottom: var(--space-4);">
+                <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--navy-900); margin: 0;">
+                    <i class="fas fa-university text-teal" style="margin-right: var(--space-2);"></i>
+                    Datos Bancarios del Vendedor
+                </h3>
+            </div>
+
+            <div class="row" style="margin-bottom: var(--space-4);">
+                <div class="col-sm-6" style="margin-bottom: var(--space-3);">
+                    <strong style="color: var(--gray-600); font-size: var(--font-size-sm);">
+                        <i class="fas fa-university" style="margin-right: var(--space-1);"></i> Banco
+                    </strong>
+                    <p style="color: var(--gray-500); margin: var(--space-1) 0 0 0; font-size: var(--font-size-sm);">
+                        {{ disbursement.method.bank.title }}
+                    </p>
+                </div>
+                <div class="col-sm-6" style="margin-bottom: var(--space-3);">
+                    <strong style="color: var(--gray-600); font-size: var(--font-size-sm);">
+                        <i class="fas fa-file-invoice-dollar" style="margin-right: var(--space-1);"></i> Tipo de Cuenta
+                    </strong>
+                    <p style="color: var(--gray-500); margin: var(--space-1) 0 0 0; font-size: var(--font-size-sm);">
+                        {{ disbursement.method.get_account_type_display }}
+                    </p>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--gray-100); padding-top: var(--space-4); margin-bottom: 0;"></div>
+
+            <div class="row">
+                <div class="col-sm-6" style="margin-bottom: var(--space-3);">
+                    <strong style="color: var(--gray-600); font-size: var(--font-size-sm);">
+                        <i class="fas fa-hashtag" style="margin-right: var(--space-1);"></i> Número de Cuenta
+                    </strong>
+                    <p style="color: var(--gray-500); margin: var(--space-1) 0 0 0; font-size: var(--font-size-sm);">
+                        {{ disbursement.method.account_number }}
+                    </p>
+                </div>
+                <div class="col-sm-6" style="margin-bottom: var(--space-3);">
+                    <strong style="color: var(--gray-600); font-size: var(--font-size-sm);">
+                        <i class="fas fa-id-card" style="margin-right: var(--space-1);"></i> Titular
+                    </strong>
+                    <p style="color: var(--gray-500); margin: var(--space-1) 0 0 0; font-size: var(--font-size-sm);">
+                        {{ disbursement.method.fullname }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Action Form -->
+        <div class="card-modern" style="border-left: 4px solid var(--warning);">
+            <div style="border-bottom: 1px solid var(--gray-100); padding-bottom: var(--space-4); margin-bottom: var(--space-4);">
+                <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--navy-900); margin: 0;">
+                    <i class="fas fa-cogs text-warning" style="margin-right: var(--space-2);"></i>
+                    Acción Administrativa
+                </h3>
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <div style="margin-bottom: var(--space-4);">
+                    <label style="display: block; font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
+                        Motivo de rechazo (Opcional)
+                    </label>
+                    <textarea name="rejection_reason" class="input-modern" rows="2" placeholder="Solo si rechaza la solicitud..."></textarea>
+                </div>
+
+                <div style="background: var(--warning-light); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-5); font-size: var(--font-size-sm); color: var(--gray-700);">
+                    <i class="fas fa-exclamation-triangle text-warning" style="margin-right: var(--space-2);"></i>
+                    Al aprobar, se descontará automáticamente el monto del saldo del vendedor.
+                </div>
+
+                <div class="row">
+                    <div class="col-6">
+                        <button type="submit" name="action" value="approve" class="btn-primary-auth" style="width: 100%;" onclick="return confirm('¿Está seguro de APROBAR este desembolso?')">
+                            <i class="fas fa-check-circle" style="margin-right: var(--space-2);"></i> Aprobar Desembolso
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button type="submit" name="action" value="reject" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: 14px 32px; border: 2px solid var(--danger); border-radius: var(--radius-sm); font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); font-family: var(--font-family); cursor: pointer; background: transparent; color: var(--danger); transition: all var(--transition-fast);" onmouseover="this.style.background='var(--danger)'; this.style.color='var(--white)';" onmouseout="this.style.background='transparent'; this.style.color='var(--danger)';" onclick="return confirm('¿Está seguro de RECHAZAR esta solicitud?')">
+                            <i class="fas fa-times-circle" style="margin-right: var(--space-2);"></i> Rechazar Solicitud
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

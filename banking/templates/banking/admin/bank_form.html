@@ -1,43 +1,94 @@
 {% extends 'dashboard/layouts/base.html' %}
 
+{% block title %}Registrar Banco{% endblock %}
+
+{% block css %}
+<style>
+    /* Apply input-modern styling to all Django-rendered form controls */
+    .card-modern input[type="text"],
+    .card-modern input[type="number"],
+    .card-modern input[type="email"],
+    .card-modern select,
+    .card-modern textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--gray-200);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-base);
+        font-family: var(--font-family);
+        transition: all var(--transition-fast);
+        background: var(--gray-50);
+        color: var(--gray-800);
+        outline: none;
+    }
+    .card-modern input:focus,
+    .card-modern select:focus,
+    .card-modern textarea:focus {
+        border-color: var(--teal);
+        background: var(--white);
+        box-shadow: 0 0 0 4px rgba(0, 201, 167, 0.1);
+    }
+    .card-modern input::placeholder {
+        color: var(--gray-400);
+    }
+    .card-modern label {
+        display: block;
+        font-weight: var(--font-weight-medium);
+        color: var(--gray-700);
+        margin-bottom: var(--space-1);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0 text-dark">Registrar Nuevo Banco</h1>
-            </div>
-        </div>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-6">
+    <div>
+        <h1 style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--navy-900); margin: 0;">
+            Registrar Nuevo Banco
+            <span class="badge-status" style="background: var(--danger-light); color: var(--danger); font-size: 10px; margin-left: var(--space-2); vertical-align: middle;">
+                <i class="fas fa-shield-alt" style="margin-right: 3px;"></i>Admin
+            </span>
+        </h1>
+        <p style="color: var(--gray-500); margin: 4px 0 0 0; font-size: var(--font-size-sm);">
+            Administración de entidades financieras
+        </p>
     </div>
 </div>
 
-<section class="content">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card card-success">
-                    <div class="card-header">
-                        <h3 class="card-title">Información de la Entidad</h3>
-                    </div>
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label>Nombre del Banco</label>
-                                {{ form.title }}
-                                {% if form.title.errors %}
-                                    <small class="text-danger">{{ form.title.errors.0 }}</small>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="card-footer text-right">
-                            <a href="{% url 'banking:bank_list' %}" class="btn btn-default">Cancelar</a>
-                            <button type="submit" class="btn btn-success">Guardar Banco</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+<div style="max-width: 560px;">
+    <div class="card-modern">
+        <div style="border-bottom: 1px solid var(--gray-100); padding-bottom: var(--space-4); margin-bottom: var(--space-5);">
+            <h3 style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--navy-900); margin: 0;">
+                Información de la Entidad
+            </h3>
         </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div style="margin-bottom: var(--space-5);">
+                <label style="display: block; font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
+                    Nombre del Banco
+                </label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <small class="text-danger" style="font-size: var(--font-size-sm);">{{ form.title.errors.0 }}</small>
+                {% endif %}
+            </div>
+
+            <div style="border-top: 1px solid var(--gray-100); padding-top: var(--space-4); display: flex; justify-content: flex-end; gap: var(--space-3);">
+                <a href="{% url 'banking:bank_list' %}" class="btn-secondary">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-primary-auth">
+                    <i class="fas fa-save" style="margin-right: var(--space-2);"></i>
+                    Guardar Banco
+                </button>
+            </div>
+        </form>
     </div>
-</section>
+</div>
+
 {% endblock %}
