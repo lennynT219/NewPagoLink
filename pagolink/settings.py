@@ -23,6 +23,9 @@ if DJANGO_ENV not in ('development', 'staging', 'production'):
 STRICT_PROFILE = DJANGO_ENV in ('staging', 'production')
 SECRET_KEY = required('SECRET_KEY')
 DEBUG = boolean('DEBUG')
+DATAFAST_ALLOW_LOCALHOST = boolean('DATAFAST_ALLOW_LOCALHOST')
+if STRICT_PROFILE and DATAFAST_ALLOW_LOCALHOST:
+  invalid('DATAFAST_ALLOW_LOCALHOST')
 
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '').split(',') if host.strip()]
 

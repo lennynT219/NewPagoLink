@@ -13,7 +13,7 @@ from django.views.generic import CreateView, ListView
 
 from accounts.models import CustomUser
 from dashboard.mixins import AdminRequiredMixin, ContractRequiredMixin
-from gateways.services import PAYER_LIMITS, DatafastClient
+from gateways.services import PAYER_LIMITS, DatafastClient, checkout_base_url, validate_checkout_configuration
 
 from . import services
 from .forms import CheckoutForm, LinkForm
@@ -108,6 +108,13 @@ class LinkCheckoutView(View):
     if not valid:
       return self.render_info(request, link, payment, form)
     customer_data = {key: form.cleaned_data[key] for key in PAYER_LIMITS}
+    try:
+      validate_checkout_configuration(
+        settings.DATAFAST_BASE_URL, settings.DATAFAST_TEST_MODE, settings.DATAFAST_AUTH_TOKEN
+      )
+    except (ValueError, TypeError) as exc:
+      form.add_error(None, str(exc))
+      return self.render_info(request, link, payment, form)
 
     if not payment:
       # Crear pago nuevo (pago directo desde link múltiple)
@@ -139,7 +146,7 @@ class LinkCheckoutView(View):
           'checkout_id': checkout_id,
           'payment': payment,
           'step': 'payment',
-          'DATAFAST_BASE_URL': settings.DATAFAST_BASE_URL,
+          'widget_url': checkout_base_url(settings.DATAFAST_BASE_URL) + 'paymentWidgets.js',
         },
       )
     form.add_error(None, 'No se pudo confirmar el intento. No reenviar; contacte a soporte.')

@@ -42,6 +42,26 @@
             <span style="font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); color: var(--teal);">${{ link.amount }}</span>
         </div>
 
+        {% if form.errors %}
+        <div id="checkout-errors" class="checkout-error-summary" role="alert" tabindex="-1" aria-labelledby="checkout-errors-title">
+            <h4 id="checkout-errors-title">No se pudo continuar al pago</h4>
+            <p>Revisa los errores indicados antes de continuar. Si el problema es de configuración, contacta a soporte.</p>
+            <ul>
+                {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+                {% for field in form %}
+                    {% for error in field.errors %}
+                    <li><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ error }}</a></li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        <script>
+            document.getElementById('checkout-errors').focus();
+        </script>
+        {% endif %}
+
         <form method="post">
             {% csrf_token %}
             <h4 style="color: var(--navy-900); font-size: var(--font-size-lg); margin-bottom: var(--space-4); padding-bottom: var(--space-2); border-bottom: 2px solid var(--gray-200);">
@@ -50,7 +70,6 @@
 
             <p>Ingresa tus datos reales como pagador, no los del vendedor. Todos los datos indicados son obligatorios.</p>
             <p>Si no tienes segundo nombre, no inventes ni repitas uno. Contacta a soporte antes de pagar.</p>
-            {{ form.non_field_errors }}
             <div class="grid-2" style="margin-bottom: var(--space-4);">
                 {% for field in form %}
                 <div>
@@ -58,7 +77,7 @@
                         {{ field.label }}
                     </label>
                     {{ field }}
-                    {{ field.errors }}
+                    <div class="checkout-field-errors">{{ field.errors }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -94,7 +113,7 @@
         </script>
 
         <!-- Script de Datafast para el widget de pagos -->
-        <script src="{{ DATAFAST_BASE_URL }}paymentWidgets.js?checkoutId={{ checkout_id }}"></script>
+        <script src="{{ widget_url }}?checkoutId={{ checkout_id|urlencode }}"></script>
 
         <form action="{{ request.scheme }}://{{ request.get_host }}{% url 'payments:payment_result' %}?payment_id={{ payment.id }}" class="paymentWidgets" data-brands="VISA MASTER AMEX DINERS DISCOVER"></form>
 
@@ -119,6 +138,17 @@
 <script type="text/javascript" src="https://www.datafast.com.ec/js/dfAdditionalValidations1.js"></script>
 
 <style>
+    .checkout-error-summary {
+        background: #fff4f4;
+        color: #8b1a1a;
+        border: 2px solid #8b1a1a;
+        border-radius: var(--radius-sm);
+        padding: var(--space-4);
+        margin-bottom: var(--space-5);
+        scroll-margin-top: 100px;
+    }
+    .checkout-error-summary a { color: #8b1a1a; text-decoration: underline; }
+    .checkout-field-errors { color: #8b1a1a; font-weight: 600; }
     /* Datafast widget styles — minimal overrides for design-system compatibility */
     .wpwl-form-card {
         background: #ffffff !important;

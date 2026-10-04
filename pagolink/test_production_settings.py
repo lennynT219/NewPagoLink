@@ -207,6 +207,19 @@ class ProductionSettingsTests(SimpleTestCase):
           if value and len(value) > 12:
             self.assertNotIn(value, result.stderr)
 
+  def test_localhost_opt_in_rejected_at_strict_startup(self):
+    for profile in ('staging', 'production'):
+      for debug in ('False', 'True'):
+        with self.subTest(profile=profile, debug=debug):
+          result = profile_result({'DJANGO_ENV': profile, 'DEBUG': debug, 'DATAFAST_ALLOW_LOCALHOST': 'True'})
+          self.assertNotEqual(result.returncode, 0)
+          self.assertIn('DATAFAST_ALLOW_LOCALHOST', result.stderr)
+
+  def test_localhost_flag_boolean_validation(self):
+    result = profile_result({'DATAFAST_ALLOW_LOCALHOST': 'perhaps'})
+    self.assertNotEqual(result.returncode, 0)
+    self.assertIn('DATAFAST_ALLOW_LOCALHOST', result.stderr)
+
   def test_required_credentials_and_explicit_email(self):
     for key in (
       'SECRET_KEY',

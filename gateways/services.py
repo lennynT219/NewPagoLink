@@ -326,7 +326,17 @@ def validate_payer_field(key, value):
   return value
 
 
-def validate_client_ip(value):
+def localhost_checkout_allowed(base_url, test_mode):
+  """One local-IP permission gate, also evaluated against actual SDK overrides."""
+  if not settings.DATAFAST_ALLOW_LOCALHOST or not settings.DEBUG or settings.STRICT_PROFILE:
+    return False
+  try:
+    return checkout_base_url(base_url) == 'https://eu-test.oppwa.com/v1/' and test_mode == 'EXTERNAL'
+  except (ValueError, TypeError):
+    return False
+
+
+def validate_client_ip(value, *, base_url=None, test_mode=None, use_settings=True):
   if value is None:
     raise ValueError('No se pudo verificar la dirección IP del pagador.')
   if not isinstance(value, str):
@@ -337,16 +347,26 @@ def validate_client_ip(value):
     address = ipaddress.ip_address(value)
     effective = address.ipv4_mapped if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped else address
     # Development tests may use documentation-only IPs; strict profiles may not.
-    if effective.is_loopback or effective.is_unspecified or effective.is_multicast or effective.is_link_local:
+    if effective.is_unspecified or effective.is_multicast or effective.is_link_local:
       raise ValueError
     if settings.STRICT_PROFILE and not effective.is_global:
       raise ValueError
   except ValueError as exc:
     raise ValueError('No se pudo verificar la dirección IP del pagador.') from exc
+  if effective.is_loopback:
+    if use_settings:
+      base_url, test_mode = settings.DATAFAST_BASE_URL, settings.DATAFAST_TEST_MODE
+    if not localhost_checkout_allowed(base_url, test_mode):
+      raise ValueError(
+        'No se pudo verificar la dirección IP del pagador. '
+        'Localhost requiere DATAFAST_ALLOW_LOCALHOST=True, DEBUG=True y sandbox '
+        'https://eu-test.oppwa.com con DATAFAST_TEST_MODE=EXTERNAL, solo en desarrollo. '
+        'Contacte a soporte; no cambie ni invente la IP.'
+      )
   return str(address)
 
 
-def validate_checkout_payer(customer_data, client_ip):
+def validate_checkout_payer(customer_data, client_ip, **ip_options):
   if customer_data is None:
     raise ValueError('Complete los datos obligatorios del pagador.')
   if not isinstance(customer_data, dict):
@@ -360,7 +380,7 @@ def validate_checkout_payer(customer_data, client_ip):
     raise TypeError('La referencia interna del pagador debe ser texto.')
   if not re.fullmatch(r'[1-9][0-9]{0,15}', reference):
     raise ValueError('Referencia interna del pagador inválida.')
-  validate_client_ip(client_ip)
+  validate_client_ip(client_ip, **ip_options)
 
 
 def validate_checkout_cart(amount, subtotal, igv, product_description):
@@ -388,11 +408,49 @@ def validate_checkout_cart(amount, subtotal, igv, product_description):
 
 def checkout_authorization(token):
   if not isinstance(token, str) or not token.strip() or not token.isprintable():
-    raise ValueError('Configuración de autorización de checkout inválida.')
+    raise ValueError('Configuración de DATAFAST_AUTH_TOKEN inválida. Contacte a soporte.')
   raw = token.removeprefix('Bearer ')
   if not raw or any(char.isspace() for char in raw) or raw.casefold() == 'bearer':
-    raise ValueError('Configuración de autorización de checkout inválida.')
+    raise ValueError('Configuración de DATAFAST_AUTH_TOKEN inválida. Contacte a soporte.')
   return f'Bearer {raw}'
+
+
+def checkout_base_url(value):
+  """Canonical API root shared by checkout preparation and its widget."""
+  if not isinstance(value, str):
+    raise TypeError('Configuración de DATAFAST_BASE_URL inválida.')
+  try:
+    base = urlsplit(value)
+  except ValueError:
+    raise ValueError('Configuración de DATAFAST_BASE_URL inválida.') from None
+  if (
+    base.scheme != 'https'
+    or not base.hostname
+    or base.username is not None
+    or base.password is not None
+    or base.query
+    or base.fragment
+    or '?' in value
+    or '#' in value
+    or base.path not in ('', '/', '/v1', '/v1/')
+    or any(char.isspace() for char in value)
+  ):
+    raise ValueError('Configuración de DATAFAST_BASE_URL inválida.')
+  return f'https://{base.netloc}/v1/'
+
+
+def validate_checkout_configuration(base_url, test_mode, auth_token):
+  """Pure preflight: fail before reserving an attempt or making provider I/O."""
+  base = urlsplit(checkout_base_url(base_url))
+  if test_mode and (test_mode != 'EXTERNAL' or base.netloc != 'eu-test.oppwa.com'):
+    raise ValueError('Configuración de DATAFAST_TEST_MODE inválida. Contacte a soporte.')
+  checkout_authorization(auth_token)
+  validate_checkout_metadata(
+    settings.DATAFAST_ECI,
+    settings.DATAFAST_PSERV,
+    settings.DATAFAST_MERCHANT_NAME,
+    settings.DATAFAST_CART_PRICE_BASIS,
+  )
 
 
 class DatafastClient:
@@ -408,6 +466,9 @@ class DatafastClient:
     self.mid = settings.DATAFAST_MID
     self.tid = settings.DATAFAST_TID
     self.test_mode = settings.DATAFAST_TEST_MODE
+
+  def validate_configuration(self):
+    validate_checkout_configuration(self.base_url, self.test_mode, self.auth_token)
 
   def _get_headers(self) -> dict[str, str]:
     return {'Authorization': self.auth_token, 'Content-Type': 'application/x-www-form-urlencoded'}
@@ -427,32 +488,17 @@ class DatafastClient:
     """
     Inicia una sesión de checkout (Fase 2) con desglose de impuestos.
     """
-    validate_checkout_payer(customer_data, client_ip)
-    validate_checkout_cart(amount, subtotal, igv, product_description)
-    validate_checkout_metadata(
-      settings.DATAFAST_ECI,
-      settings.DATAFAST_PSERV,
-      settings.DATAFAST_MERCHANT_NAME,
-      settings.DATAFAST_CART_PRICE_BASIS,
+    validate_checkout_payer(
+      customer_data, client_ip, base_url=self.base_url, test_mode=self.test_mode, use_settings=False
     )
+    self.validate_configuration()
+    validate_checkout_cart(amount, subtotal, igv, product_description)
     cart_price = subtotal if settings.DATAFAST_CART_PRICE_BASIS == 'net' else amount
     if not re.fullmatch(r'[0-9]{1,10}\.[0-9]{2}', format(cart_price, '.2f')):
       raise ValueError('El precio del pago no es compatible con el checkout.')
     headers = self._get_headers()
     headers['Authorization'] = checkout_authorization(self.auth_token)
-    base = urlsplit(self.base_url)
-    if (
-      base.scheme != 'https'
-      or not base.hostname
-      or base.username is not None
-      or base.password is not None
-      or base.query
-      or base.fragment
-      or base.path not in ('', '/', '/v1', '/v1/')
-    ):
-      raise ValueError('Configuración de endpoint de checkout inválida.')
-    if self.test_mode and (self.test_mode != 'EXTERNAL' or base.netloc != 'eu-test.oppwa.com'):
-      raise ValueError('Configuración de modo de prueba de checkout inválida.')
+    base = urlsplit(checkout_base_url(self.base_url))
     url = f'https://{base.netloc}/v1/checkouts'
 
     # Lógica de Impuestos según Datafast Ecuador

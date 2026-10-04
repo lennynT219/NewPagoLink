@@ -741,7 +741,7 @@ class CheckoutTemplateTests(TestCase):
 
   def test_checkout_preserves_datafast_context(self):
     """Datafast context variables must be preserved."""
-    self.assertIn('DATAFAST_BASE_URL', self.content)
+    self.assertIn('widget_url', self.content)
     self.assertIn('checkout_id', self.content)
     self.assertIn('payment.id', self.content)
 
@@ -784,7 +784,11 @@ class CheckoutTemplateTests(TestCase):
 
   def test_checkout_preserves_datafast_widget_script(self):
     """Datafast paymentWidgets.js script must be preserved."""
-    self.assertIn('paymentWidgets.js', self.content, 'Datafast paymentWidgets.js must be preserved')
+    self.assertIn(
+      '<script src="{{ widget_url }}?checkoutId={{ checkout_id|urlencode }}"></script>',
+      self.content,
+      'Datafast widget URL and encoded checkout ID binding must be preserved',
+    )
 
   def test_checkout_preserves_datafast_validations(self):
     """Datafast additional validations script must be preserved."""

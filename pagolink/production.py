@@ -183,15 +183,14 @@ def secure_profile(secret, debug):
 
 def validate_checkout_metadata(eci, pserv, merchant_name, price_basis):
   """Shared startup/checkout gate; identifiers are opaque provider-confirmed text."""
-  for value in (eci, pserv, merchant_name, price_basis):
+  keys = ('DATAFAST_ECI', 'DATAFAST_PSERV', 'DATAFAST_MERCHANT_NAME', 'DATAFAST_CART_PRICE_BASIS')
+  for key, value in zip(keys, (eci, pserv, merchant_name, price_basis), strict=True):
     if not isinstance(value, str) or not value.strip() or not value.isprintable():
-      raise ValueError('Configuración de checkout incompleta o inválida.')
-  if (
-    len(merchant_name) > 30
-    or not all(char.isalnum() or char == ' ' for char in merchant_name)
-    or price_basis not in ('net', 'gross')
-  ):
-    raise ValueError('Configuración de checkout incompleta o inválida.')
+      raise ValueError(f'Configuración de {key} incompleta o inválida. Contacte a soporte.')
+  if len(merchant_name) > 30 or not all(char.isalnum() or char == ' ' for char in merchant_name):
+    raise ValueError('Configuración de DATAFAST_MERCHANT_NAME inválida. Contacte a soporte.')
+  if price_basis not in ('net', 'gross'):
+    raise ValueError('Configuración de DATAFAST_CART_PRICE_BASIS inválida. Contacte a soporte.')
 
 
 def validate_datafast(strict, base_url, test_mode):
