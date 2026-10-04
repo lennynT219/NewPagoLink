@@ -26,7 +26,7 @@ class AdminRefundListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
   context_object_name = 'refunds'
 
   def get_queryset(self):
-    return Refund.objects.filter(status=Refund.RefundStatus.PENDING).order_by('created_at')
+    return Refund.objects.filter(status__in=['PENDING', 'PROCESSING', 'UNKNOWN']).order_by('created_at')
 
 
 class AdminRefundApproveView(LoginRequiredMixin, AdminRequiredMixin, View):
@@ -34,10 +34,17 @@ class AdminRefundApproveView(LoginRequiredMixin, AdminRequiredMixin, View):
 
   def post(self, request, pk):
     try:
-      services.approve_refund_logic(pk, request.user)
-      messages.success(request, 'El reembolso ha sido aprobado y procesado exitosamente.')
-    except Exception as e:
-      messages.error(request, f'Error al procesar el reembolso: {e!s}')
+      refund = services.approve_refund_logic(pk, request.user)
+      if refund.status == Refund.RefundStatus.APPROVED:
+        messages.success(request, 'El reembolso ha sido aprobado y confirmado por Datafast.')
+      elif refund.status == Refund.RefundStatus.REJECTED:
+        messages.error(request, 'Datafast rechazó el reembolso. La reserva fue liberada.')
+      else:
+        messages.warning(request, 'Resultado pendiente de conciliación; fondos reservados. No reenviar.')
+    except ValueError as exc:
+      messages.error(request, str(exc))
+    except Exception:
+      messages.error(request, 'No se pudo verificar el reembolso. No reenviar; contacte a soporte.')
     return redirect('payments:admin_refund_list')
 
 
@@ -237,9 +244,11 @@ class RefundRequestView(LoginRequiredMixin, ContractRequiredMixin, View):
       services.request_refund(request.user.customuser, payment, description)
       messages.success(request, 'Solicitud de reembolso enviada. Será procesada por nuestro equipo.')
       return redirect('payments:payment_history')
-    except Exception as e:
-      messages.error(request, str(e))
-      return render(request, self.template_name, {'payment': payment})
+    except ValueError as exc:
+      messages.error(request, str(exc))
+    except Exception:
+      messages.error(request, 'No se pudo registrar la solicitud. Contacte a soporte.')
+    return render(request, self.template_name, {'payment': payment})
 
 
 class LinkDetailView(LoginRequiredMixin, ContractRequiredMixin, ListView):

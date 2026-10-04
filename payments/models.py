@@ -32,9 +32,12 @@ class Payment(models.Model):
     PENDING = 'PENDING', _('Pendiente')
     PAID = 'PAID', _('Pagado')
     FAILED = 'FAILED', _('Fallido')
+    REFUNDED = 'REFUNDED', _('Reembolsado')
 
   link = models.ForeignKey(Link, on_delete=models.SET_NULL, null=True, related_name='payments')
-  seller = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='sales')
+  seller = models.ForeignKey(
+    'accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='sales'
+  )
 
   # Datos del cliente
   first_name = models.CharField(max_length=100)
@@ -72,8 +75,7 @@ class PaymentAttempt(models.Model):
     SUPERSEDED = 'SUPERSEDED'
 
   payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name='checkout_attempts')
-  merchant_transaction_id = models.CharField(max_length=255, unique=True,
-    default=new_merchant_transaction_id)
+  merchant_transaction_id = models.CharField(max_length=255, unique=True, default=new_merchant_transaction_id)
   checkout_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
   provider_transaction_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
   amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -85,9 +87,13 @@ class PaymentAttempt(models.Model):
   updated_at = models.DateTimeField(auto_now=True)
 
   class Meta:
-    constraints = [models.UniqueConstraint(fields=['payment'],
-      condition=models.Q(state__in=['CREATING', 'LIVE', 'UNKNOWN']),
-      name='one_open_checkout_per_payment')]
+    constraints = [
+      models.UniqueConstraint(
+        fields=['payment'],
+        condition=models.Q(state__in=['CREATING', 'LIVE', 'UNKNOWN']),
+        name='one_open_checkout_per_payment',
+      )
+    ]
 
   @property
   def resource_path(self):
@@ -109,6 +115,8 @@ class Sale(models.Model):
 class Refund(models.Model):
   class RefundStatus(models.TextChoices):
     PENDING = 'PENDING', _('Pendiente')
+    PROCESSING = 'PROCESSING', _('Procesando')
+    UNKNOWN = 'UNKNOWN', _('Desconocido')
     APPROVED = 'APPROVED', _('Aprobado')
     REJECTED = 'REJECTED', _('Rechazado')
 
@@ -119,9 +127,23 @@ class Refund(models.Model):
   status = models.CharField(max_length=10, choices=RefundStatus.choices, default=RefundStatus.PENDING)
   ticket = models.CharField(max_length=255, null=True, blank=True)
   created_at = models.DateTimeField(auto_now_add=True)
-  
+
+  # Zero/default fields leave historical rows and their accounting untouched.
+  held_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+  original_transaction_id = models.CharField(max_length=255, blank=True)
+  provider_refund_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+  provider_outcome = models.CharField(max_length=10, blank=True)
+  result_code = models.CharField(max_length=32, blank=True)
+  history = models.JSONField(default=list)
+  initiated_by = models.ForeignKey(
+    'auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='initiated_refunds'
+  )
+  initiated_at = models.DateTimeField(null=True, blank=True)
+
   # Campos de Auditoría Administrativa
-  processed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_refunds')
+  processed_by = models.ForeignKey(
+    'auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_refunds'
+  )
   processed_at = models.DateTimeField(null=True, blank=True)
 
   def __str__(self):

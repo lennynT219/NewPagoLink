@@ -1,6 +1,9 @@
 {% extends 'dashboard/layouts/base.html' %}
 
 {% block content %}
+{% for message in messages %}
+<div role="alert" class="alert">{{ message }}</div>
+{% endfor %}
 <!-- Page Header -->
 <div class="mb-6">
     <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--navy-900);margin:0;">Solicitar Reembolso</h1>
@@ -13,6 +16,12 @@
                 <i class="fas fa-exclamation-triangle mr-2" style="color:var(--danger);"></i>Confirmación de devolución
             </h3>
 
+            <p>La devolución es por el monto total del pago. La comisión del vendedor no se devuelve; se requiere saldo disponible suficiente.</p>
+            {% if payment.refund %}
+            <p>Solicitud existente: {{ payment.refund.get_status_display }}. No reenviar.</p>
+            {% elif payment.status != 'PAID' %}
+            <p>Solo se pueden reembolsar pagos confirmados.</p>
+            {% endif %}
             <form method="post">
                 {% csrf_token %}
 
@@ -34,7 +43,7 @@
                 <!-- Actions -->
                 <div class="d-flex justify-content-end gap-2" style="padding-top:var(--space-4);border-top:1px solid var(--gray-100);">
                     <a href="{% url 'payments:payment_history' %}" class="btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn-primary-auth" style="background:linear-gradient(135deg,var(--danger) 0%,#dc2626 100%);box-shadow:0 4px 16px rgba(239,68,68,0.25);">
+                    <button type="submit" {% if payment.refund or payment.status != 'PAID' %}disabled{% endif %} class="btn-primary-auth" style="background:linear-gradient(135deg,var(--danger) 0%,#dc2626 100%);box-shadow:0 4px 16px rgba(239,68,68,0.25);">
                         <i class="fas fa-paper-plane mr-1"></i> Enviar Solicitud
                     </button>
                 </div>

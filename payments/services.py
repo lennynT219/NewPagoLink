@@ -1,22 +1,21 @@
-from typing import Any, Dict, Optional
 import csv
 import io
 import logging
-
-import openpyxl
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
-from django.db.models import Sum
-from decimal import Decimal, InvalidOperation
-from datetime import timedelta
-from urllib.parse import urlsplit
 import re
+from datetime import timedelta
+from decimal import Decimal, InvalidOperation
+from typing import Any
+from urllib.parse import urlsplit
 
-from django.db import transaction, IntegrityError
-from django.utils import timezone
 from django.conf import settings
-from payments.models import Link, Payment, PaymentAttempt, Refund, Sale
+from django.db import IntegrityError, connection, transaction
+from django.db.models import Sum
+from django.utils import timezone
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
+
 from accounts.models import CustomUser
+from payments.models import Link, Payment, PaymentAttempt, Refund, Sale
 from shared.email_service import send_html_email
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,10 @@ def send_payment_invite(payment: Payment, req: Any) -> None:
     return
 
   subject = f'Invitación de pago de {payment.seller.user.get_full_name()}'
-  context = {'payment': payment, 'pay_url': f'{req.scheme}://{req.get_host()}/payments/pay/{payment.link.id}/?p={payment.id}'}
+  context = {
+    'payment': payment,
+    'pay_url': f'{req.scheme}://{req.get_host()}/payments/pay/{payment.link.id}/?p={payment.id}',
+  }
   ok = send_html_email(subject, [payment.email], 'payments/emails/invite_email.html', context)
   if not ok:
     logger.error('Payment invite email failed for %s', payment.email)
@@ -53,7 +55,7 @@ def send_payment_confirmation(payment: Payment) -> None:
 
 
 @transaction.atomic
-def create_payment_link(seller: CustomUser, data: Dict[str, Any]) -> Link:
+def create_payment_link(seller: CustomUser, data: dict[str, Any]) -> Link:
   """Servicio para crear un Link de pago con lógica financiera avanzada (IVA 15%/0%)."""
   input_amount = Decimal(str(data['subtotal']))
   tax_type = data.get('tax_type', Link.TaxType.VAT_15)
@@ -95,24 +97,43 @@ def create_payment_link(seller: CustomUser, data: Dict[str, Any]) -> Link:
 SELLER_FEE = Decimal('0.35')
 OPEN_ATTEMPT_STATES = ['CREATING', 'LIVE', 'UNKNOWN']
 # Only documented, definitive declines release an attempt for immediate retry.
-DECLINE_CODES = {'800.100.151', '800.100.152', '800.100.155', '800.100.159',
-  '800.100.165', '800.100.168', '800.100.170', '800.100.171', '800.100.174',
-  '800.100.176', '800.100.179', '800.100.190', '800.100.197', '800.100.402'}
+DECLINE_CODES = {
+  '800.100.151',
+  '800.100.152',
+  '800.100.155',
+  '800.100.159',
+  '800.100.165',
+  '800.100.168',
+  '800.100.170',
+  '800.100.171',
+  '800.100.174',
+  '800.100.176',
+  '800.100.179',
+  '800.100.190',
+  '800.100.197',
+  '800.100.402',
+}
 
 
 def _record_attempt(attempt, state, reason, code=''):
   """Keep sanitized state history, never raw provider/customer payloads."""
   attempt.state = state
   attempt.result_code = code
-  attempt.history = [*attempt.history, {'at': timezone.now().isoformat(),
-    'state': state, 'reason': reason, 'code': code}]
+  attempt.history = [
+    *attempt.history,
+    {'at': timezone.now().isoformat(), 'state': state, 'reason': reason, 'code': code},
+  ]
   attempt.save()
 
 
 def _settled(payment):
   # Sale history survives refunds, including the legacy FAILED refund convention.
-  return (payment.status == Payment.PaymentStatus.PAID or payment.state or
-    Sale.objects.filter(payment=payment).exists() or payment.status == 'REFUNDED')
+  return (
+    payment.status == Payment.PaymentStatus.PAID
+    or payment.state
+    or Sale.objects.filter(payment=payment).exists()
+    or payment.status == 'REFUNDED'
+  )
 
 
 def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
@@ -128,8 +149,7 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
       raise ValueError('Este pago no tiene un link activo.')
     if not link.active:
       raise ValueError('Este link no está activo.')
-    current = PaymentAttempt.objects.select_for_update().filter(
-      payment=payment, state__in=OPEN_ATTEMPT_STATES).first()
+    current = PaymentAttempt.objects.select_for_update().filter(payment=payment, state__in=OPEN_ATTEMPT_STATES).first()
     if current:
       # Start no earlier than the response, not the pre-I/O reservation.
       # Later observations conservatively extend the local no-retry window.
@@ -144,15 +164,19 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
     payment.save()
     attempt = PaymentAttempt.objects.create(payment=payment, amount=payment.amount)
     _record_attempt(attempt, 'CREATING', 'checkout_reserved')
-    customer = {key: getattr(payment, key) for key in
-      ('first_name', 'last_name', 'email', 'identify', 'phone')}
+    customer = {key: getattr(payment, key) for key in ('first_name', 'last_name', 'email', 'identify', 'phone')}
 
   # A timeout may have created a remote checkout; do not blindly retry it.
   try:
-    checkout_id = gateway.prepare_checkout(amount=attempt.amount,
-      subtotal=payment.subtotal, igv=payment.igv, include_igv=link.include_igv,
-      transaction_id=attempt.merchant_transaction_id, customer_data=customer,
-      client_ip=client_ip)
+    checkout_id = gateway.prepare_checkout(
+      amount=attempt.amount,
+      subtotal=payment.subtotal,
+      igv=payment.igv,
+      include_igv=link.include_igv,
+      transaction_id=attempt.merchant_transaction_id,
+      customer_data=customer,
+      client_ip=client_ip,
+    )
   except Exception:
     checkout_id = None
   with transaction.atomic():
@@ -180,9 +204,14 @@ def _valid_result(payment, attempt, data):
     return False
   provider_id = data.get('id')
   code = data['result'].get('code')
-  if (not isinstance(provider_id, str) or not provider_id.strip() or
-      provider_id != provider_id.strip() or len(provider_id) > 255 or
-      not isinstance(code, str) or not re.fullmatch(r'\d{3}\.\d{3}\.\d{3}', code)):
+  if (
+    not isinstance(provider_id, str)
+    or not provider_id.strip()
+    or provider_id != provider_id.strip()
+    or len(provider_id) > 255
+    or not isinstance(code, str)
+    or not re.fullmatch(r'\d{3}\.\d{3}\.\d{3}', code)
+  ):
     return False
   try:
     raw_amount = data.get('amount')
@@ -194,13 +223,17 @@ def _valid_result(payment, attempt, data):
       return False
   except (InvalidOperation, ValueError):
     return False
-  return (attempt.checkout_id is not None and
-    data.get('merchantTransactionId') == attempt.merchant_transaction_id and
-    amount == attempt.amount == payment.amount and amount >= SELLER_FEE and
-    data.get('currency') == attempt.currency == 'USD' and data.get('paymentType') == 'DB' and
-    not Payment.objects.exclude(pk=payment.pk).filter(transaction_id=provider_id).exists() and
-    not PaymentAttempt.objects.exclude(pk=attempt.pk).filter(provider_transaction_id=provider_id).exists() and
-    attempt.provider_transaction_id in (None, provider_id))
+  return (
+    attempt.checkout_id is not None
+    and data.get('merchantTransactionId') == attempt.merchant_transaction_id
+    and amount == attempt.amount == payment.amount
+    and amount >= SELLER_FEE
+    and data.get('currency') == attempt.currency == 'USD'
+    and data.get('paymentType') == 'DB'
+    and not Payment.objects.exclude(pk=payment.pk).filter(transaction_id=provider_id).exists()
+    and not PaymentAttempt.objects.exclude(pk=attempt.pk).filter(provider_transaction_id=provider_id).exists()
+    and attempt.provider_transaction_id in (None, provider_id)
+  )
 
 
 def _confirmation_after_commit(payment):
@@ -231,8 +264,7 @@ def process_payment_result(payment_id: int, result_data: Any, attempt_id=None) -
   code = result_data['result']['code']
   success_codes = {'000.000.000'}
   # Test connector responses are never approvals on the production endpoint.
-  if (settings.DATAFAST_TEST_MODE and
-      urlsplit(settings.DATAFAST_BASE_URL).hostname == 'eu-test.oppwa.com'):
+  if settings.DATAFAST_TEST_MODE and urlsplit(settings.DATAFAST_BASE_URL).hostname == 'eu-test.oppwa.com':
     success_codes.update({'000.100.110', '000.100.112'})
   try:
     # Constraints are the final race guard across different payment row locks.
@@ -261,8 +293,9 @@ def process_payment_result(payment_id: int, result_data: Any, attempt_id=None) -
       payment.amount_client = payment.amount
       payment.save()
       net_amount = attempt.amount - SELLER_FEE
-      Sale.objects.create(vendor=seller, payment=payment, amount=attempt.amount,
-        commission=SELLER_FEE, net_amount=net_amount)
+      Sale.objects.create(
+        vendor=seller, payment=payment, amount=attempt.amount, commission=SELLER_FEE, net_amount=net_amount
+      )
       seller.available_balance += net_amount
       seller.save(update_fields=['available_balance'])
       _record_attempt(attempt, 'SUCCEEDED', 'confirmed_debit', code)
@@ -334,47 +367,157 @@ def generate_payments_excel(seller: CustomUser) -> io.BytesIO:
 @transaction.atomic
 def request_refund(seller: CustomUser, payment: Payment, description: str) -> Refund:
   """Crea una solicitud de reembolso para un pago específico."""
-  if payment.seller != seller:
+  payment = Payment.objects.select_for_update().get(pk=payment.pk)
+  if payment.seller_id != seller.pk:
     raise ValueError('No tiene permisos sobre este pago.')
   if payment.status != Payment.PaymentStatus.PAID:
     raise ValueError('Solo se pueden reembolsar pagos confirmados.')
   if hasattr(payment, 'refund'):
     raise ValueError('Este pago ya tiene una solicitud de reembolso.')
 
-  return Refund.objects.create(
-    seller=seller, payment=payment, description=description, amount=payment.amount, state=False
+  return Refund.objects.create(seller=seller, payment=payment, description=description, amount=payment.amount)
+
+
+def _lock_refund(refund_id):
+  # Payment first, then refund, then seller: compatible with payment credit.
+  # Payout approval locks its own request then seller, never a payment/refund.
+  payment_id = Refund.objects.values_list('payment_id', flat=True).get(pk=refund_id)
+  payment = Payment.objects.select_for_update().get(pk=payment_id)
+  refund = Refund.objects.select_for_update().get(pk=refund_id)
+  return payment, refund
+
+
+def _refund_binding_valid(payment, refund):
+  from gateways.services import DatafastClient
+
+  return (
+    payment.status == Payment.PaymentStatus.PAID
+    and payment.seller_id is not None
+    and payment.seller_id == refund.seller_id
+    and refund.amount == payment.amount
+    and DatafastClient._refund_amount_is_valid(refund.amount)
+    and DatafastClient._refund_id_is_safe(payment.transaction_id)
+  )
+
+
+def _record_refund(refund, state, outcome, reason, code=''):
+  """Persist only bounded internal reasons and validated identifiers/codes."""
+  refund.status = state
+  refund.provider_outcome = outcome
+  refund.result_code = code
+  refund.history = [
+    *refund.history,
+    {'at': timezone.now().isoformat(), 'state': state, 'outcome': outcome, 'reason': reason, 'code': code},
+  ]
+  refund.save()
+
+
+def _bound_refund_result(payment, refund, result):
+  from gateways.services import DatafastClient
+
+  if not isinstance(result, dict):
+    return False
+  refund_id = result.get('refund_id')
+  code = result.get('code')
+  return (
+    DatafastClient._refund_id_is_safe(refund_id)
+    and result.get('original_id') == refund.original_transaction_id == payment.transaction_id
+    and refund_id != payment.transaction_id
+    and refund.provider_refund_id in (None, refund_id)
+    and not Refund.objects.exclude(pk=refund.pk).filter(provider_refund_id=refund_id).exists()
+    and not Payment.objects.filter(transaction_id=refund_id).exists()
+    and DatafastClient._refund_amount_is_valid(result.get('amount'))
+    and result.get('amount') == refund.held_amount == refund.amount == payment.amount
+    and result.get('currency') == 'USD'
+    and isinstance(code, str)
+    and re.fullmatch(r'\d{3}\.\d{3}\.\d{3}', code) is not None
+    and result.get('outcome') in ('CONFIRMED', 'DECLINED', 'UNKNOWN')
   )
 
 
 @transaction.atomic
-def approve_refund_logic(refund_id: int, admin_user: Any) -> Refund:
-  """
-  Lógica de negocio para aprobar un reembolso.
-  1. Marca el Refund como aprobado.
-  2. Actualiza el Payment relacionado a un estado de 'Reembolsado' (via state=False o status).
-  3. Registra auditoría (quién y cuándo).
-  """
-  refund = Refund.objects.select_for_update().get(id=refund_id)
-  if refund.status != Refund.RefundStatus.PENDING:
-    raise ValueError("Este reembolso ya ha sido procesado anteriormente.")
+def settle_refund(refund_id: int, result: Any) -> Refund:
+  """Internal T4 settlement seam: trusted normalized observations, never RF I/O.
 
-  # Actualizar Reembolso
-  refund.status = Refund.RefundStatus.APPROVED
-  refund.processed_by = admin_user
+  Only a bound open reservation can move money. Terminal/legacy records are
+  immutable here. UNKNOWN/PROCESSING are not permission to send another RF.
+  """
+  payment, refund = _lock_refund(refund_id)
+  if refund.status not in ('PROCESSING', 'UNKNOWN'):
+    return refund
+  if not _refund_binding_valid(payment, refund) or refund.held_amount != refund.amount:
+    _record_refund(refund, 'UNKNOWN', 'UNKNOWN', 'reservation_binding_invalid')
+    return refund
+  if not _bound_refund_result(payment, refund, result):
+    _record_refund(refund, 'UNKNOWN', 'UNKNOWN', 'unavailable_or_unbound_result')
+    return refund
+  code = result['code']
+  success_codes = {'000.000.000'}
+  if urlsplit(settings.DATAFAST_BASE_URL).netloc == 'eu-test.oppwa.com' and settings.DATAFAST_TEST_MODE == 'EXTERNAL':
+    success_codes.add('000.100.112')
+  outcome = result['outcome']
+  if not ((outcome == 'CONFIRMED' and code in success_codes) or (outcome == 'DECLINED' and code == '800.100.174')):
+    refund.provider_refund_id = result['refund_id']
+    _record_refund(refund, 'UNKNOWN', 'UNKNOWN', 'non_final_result', code)
+    return refund
+  seller = CustomUser.objects.select_for_update().get(pk=refund.seller_id)
+  refund.provider_refund_id = result['refund_id']
+  refund.processed_by = refund.initiated_by
   refund.processed_at = timezone.now()
-  refund.save()
-
-  # Actualizar Pago relacionado
-  payment = refund.payment
-  payment.status = Payment.PaymentStatus.FAILED # O añadir un estado 'REFUNDED' si se desea
-  payment.state = False # Ya no cuenta como venta activa para KPIs
-  payment.save()
-
+  if outcome == 'CONFIRMED':
+    # Reservation already debited gross. Preserve Sale and earned commission.
+    payment.status = Payment.PaymentStatus.REFUNDED
+    payment.state = False
+    payment.save(update_fields=['status', 'state'])
+    state = 'APPROVED'
+  else:
+    seller.available_balance += refund.held_amount
+    seller.save(update_fields=['available_balance'])
+    state = 'REJECTED'
+  refund.held_amount = Decimal('0.00')
+  _record_refund(refund, state, outcome, 'provider_settled', code)
   return refund
 
 
+def approve_refund_logic(refund_id: int, admin_user: Any, gateway=None) -> Refund:
+  """Commit gross reservation, send one RF outside locks, then settle separately."""
+  from gateways.services import DatafastClient
 
-def get_seller_stats(seller: CustomUser) -> Dict[str, Any]:
+  # An outer transaction would hide the hold from payouts during provider I/O.
+  if connection.in_atomic_block or not connection.get_autocommit():
+    raise ValueError('El reembolso requiere una transacción independiente.')
+  with transaction.atomic():
+    payment, refund = _lock_refund(refund_id)
+    if refund.status != Refund.RefundStatus.PENDING or refund.held_amount:
+      raise ValueError('Este reembolso ya está procesado o en revisión. No reenviar.')
+    if not _refund_binding_valid(payment, refund):
+      raise ValueError('El reembolso no corresponde a un pago confirmado válido.')
+    seller = CustomUser.objects.select_for_update().get(pk=refund.seller_id)
+    if seller.available_balance < refund.amount:
+      raise ValueError('Saldo insuficiente: se requiere el monto total del pago para reembolsar.')
+    seller.available_balance -= refund.amount
+    seller.save(update_fields=['available_balance'])
+    refund.held_amount = refund.amount
+    refund.original_transaction_id = payment.transaction_id
+    refund.initiated_by = admin_user
+    refund.initiated_at = timezone.now()
+    _record_refund(refund, 'PROCESSING', '', 'gross_reserved')
+
+  try:
+    result = (gateway or DatafastClient()).refund_payment(refund.original_transaction_id, refund.amount)
+  except Exception:
+    # Exception text/payloads may contain credentials. Never persist or show them.
+    result = {'outcome': 'UNKNOWN'}
+  try:
+    return settle_refund(refund.pk, result)
+  except Exception:
+    # Even a DB failure after RF must leave the committed PROCESSING hold intact.
+    # Never resend, release, or claim approval based on an in-memory response.
+    logger.warning('Refund %s settlement unavailable; reconciliation required', refund.pk)
+    return Refund.objects.get(pk=refund.pk)
+
+
+def get_seller_stats(seller: CustomUser) -> dict[str, Any]:
   """Estadísticas del Dashboard incluyendo KPIs financieros."""
   today = timezone.now().date()
 

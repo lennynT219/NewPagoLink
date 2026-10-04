@@ -38,10 +38,9 @@
                     <td><strong>${{ refund.amount }}</strong></td>
                     <td>{{ refund.description|truncatechars:40 }}</td>
                     <td>
-                        {% if refund.state %}
-                        <span class="badge-status success">Aprobado</span>
-                        {% else %}
-                        <span class="badge-status pending">Pendiente</span>
+                        <span class="badge-status {% if refund.status == 'APPROVED' %}success{% else %}pending{% endif %}">{{ refund.get_status_display }}</span>
+                        {% if refund.status == 'UNKNOWN' or refund.status == 'PROCESSING' %}
+                        <small>Fondos reservados; pendiente de conciliación. No reenviar.</small>
                         {% endif %}
                     </td>
                     <td>{{ refund.ticket|default:"En proceso" }}</td>
