@@ -7,10 +7,15 @@ import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from django.db.models import Sum
-from decimal import Decimal
-from django.db import transaction
+from decimal import Decimal, InvalidOperation
+from datetime import timedelta
+from urllib.parse import urlsplit
+import re
+
+from django.db import transaction, IntegrityError
+from django.utils import timezone
 from django.conf import settings
-from payments.models import Link, Payment, Refund, Sale
+from payments.models import Link, Payment, PaymentAttempt, Refund, Sale
 from accounts.models import CustomUser
 from shared.email_service import send_html_email
 
@@ -87,48 +92,191 @@ def create_payment_link(seller: CustomUser, data: Dict[str, Any]) -> Link:
   )
 
 
+SELLER_FEE = Decimal('0.35')
+OPEN_ATTEMPT_STATES = ['CREATING', 'LIVE', 'UNKNOWN']
+# Only documented, definitive declines release an attempt for immediate retry.
+DECLINE_CODES = {'800.100.151', '800.100.152', '800.100.155', '800.100.159',
+  '800.100.165', '800.100.168', '800.100.170', '800.100.171', '800.100.174',
+  '800.100.176', '800.100.179', '800.100.190', '800.100.197', '800.100.402'}
+
+
+def _record_attempt(attempt, state, reason, code=''):
+  """Keep sanitized state history, never raw provider/customer payloads."""
+  attempt.state = state
+  attempt.result_code = code
+  attempt.history = [*attempt.history, {'at': timezone.now().isoformat(),
+    'state': state, 'reason': reason, 'code': code}]
+  attempt.save()
+
+
+def _settled(payment):
+  # Sale history survives refunds, including the legacy FAILED refund convention.
+  return (payment.status == Payment.PaymentStatus.PAID or payment.state or
+    Sale.objects.filter(payment=payment).exists() or payment.status == 'REFUNDED')
+
+
+def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
+  """Persist reservation before I/O; concurrent retries reuse the open attempt."""
+  with transaction.atomic():
+    payment = Payment.objects.select_for_update().get(pk=payment_id)
+    if _settled(payment):
+      raise ValueError('Este pago ya ha sido procesado.')
+    if not payment.seller or payment.amount < SELLER_FEE:
+      raise ValueError('El monto del pago debe ser al menos USD 0.35.')
+    link = Link.objects.select_for_update().get(pk=payment.link.pk) if payment.link else None
+    if link is None:
+      raise ValueError('Este pago no tiene un link activo.')
+    if not link.active:
+      raise ValueError('Este link no está activo.')
+    current = PaymentAttempt.objects.select_for_update().filter(
+      payment=payment, state__in=OPEN_ATTEMPT_STATES).first()
+    if current:
+      # Start no earlier than the response, not the pre-I/O reservation.
+      # Later observations conservatively extend the local no-retry window.
+      if current.updated_at > timezone.now() - timedelta(minutes=30):
+        return current
+      _record_attempt(current, 'EXPIRED', 'checkout_window_elapsed')
+    for key in ('first_name', 'last_name', 'email', 'identify', 'phone'):
+      if customer_data.get(key) is not None:
+        setattr(payment, key, customer_data[key])
+    payment.amount_client = payment.amount
+    payment.status = Payment.PaymentStatus.PENDING
+    payment.save()
+    attempt = PaymentAttempt.objects.create(payment=payment, amount=payment.amount)
+    _record_attempt(attempt, 'CREATING', 'checkout_reserved')
+    customer = {key: getattr(payment, key) for key in
+      ('first_name', 'last_name', 'email', 'identify', 'phone')}
+
+  # A timeout may have created a remote checkout; do not blindly retry it.
+  try:
+    checkout_id = gateway.prepare_checkout(amount=attempt.amount,
+      subtotal=payment.subtotal, igv=payment.igv, include_igv=link.include_igv,
+      transaction_id=attempt.merchant_transaction_id, customer_data=customer,
+      client_ip=client_ip)
+  except Exception:
+    checkout_id = None
+  with transaction.atomic():
+    Payment.objects.select_for_update().get(pk=payment_id)
+    attempt = PaymentAttempt.objects.select_for_update().get(pk=attempt.pk)
+    if isinstance(checkout_id, str) and re.fullmatch(r'[A-Za-z0-9_-][A-Za-z0-9_.-]{0,254}', checkout_id):
+      try:
+        with transaction.atomic():
+          attempt.checkout_id = checkout_id
+          attempt.save()
+      except IntegrityError:
+        attempt.checkout_id = None
+        state = 'UNKNOWN' if attempt.state == 'CREATING' else attempt.state
+        _record_attempt(attempt, state, 'checkout_id_conflict')
+      else:
+        if attempt.state == 'CREATING':
+          _record_attempt(attempt, 'LIVE', 'checkout_created')
+    elif attempt.state == 'CREATING':
+      _record_attempt(attempt, 'UNKNOWN', 'checkout_unavailable')
+    return attempt
+
+
+def _valid_result(payment, attempt, data):
+  if not isinstance(data, dict) or not isinstance(data.get('result'), dict):
+    return False
+  provider_id = data.get('id')
+  code = data['result'].get('code')
+  if (not isinstance(provider_id, str) or not provider_id.strip() or
+      provider_id != provider_id.strip() or len(provider_id) > 255 or
+      not isinstance(code, str) or not re.fullmatch(r'\d{3}\.\d{3}\.\d{3}', code)):
+    return False
+  try:
+    raw_amount = data.get('amount')
+    # JSON floats may already have lost fractional precision; require exact input.
+    if isinstance(raw_amount, bool) or not isinstance(raw_amount, (str, int, Decimal)):
+      return False
+    amount = Decimal(str(raw_amount))
+    if not amount.is_finite() or amount != amount.quantize(Decimal('0.01')):
+      return False
+  except (InvalidOperation, ValueError):
+    return False
+  return (attempt.checkout_id is not None and
+    data.get('merchantTransactionId') == attempt.merchant_transaction_id and
+    amount == attempt.amount == payment.amount and amount >= SELLER_FEE and
+    data.get('currency') == attempt.currency == 'USD' and data.get('paymentType') == 'DB' and
+    not Payment.objects.exclude(pk=payment.pk).filter(transaction_id=provider_id).exists() and
+    not PaymentAttempt.objects.exclude(pk=attempt.pk).filter(provider_transaction_id=provider_id).exists() and
+    attempt.provider_transaction_id in (None, provider_id))
+
+
+def _confirmation_after_commit(payment):
+  try:
+    send_payment_confirmation(payment)
+  except Exception:
+    logger.warning('Payment confirmation unavailable for payment %s', payment.pk)
+
+
 @transaction.atomic
-def process_payment_result(payment_id: int, result_data: Dict[str, Any]) -> Payment:
-  """Actualiza el estado del pago y gestiona links únicos y contabilidad."""
-  payment = Payment.objects.select_for_update().get(id=payment_id)
-  result_code = result_data.get('result', {}).get('code', '')
-  SUCCESS_CODES = ['000.000.000', '000.100.110', '000.100.112', '000.400.010', '000.400.020']
-
-  if any(code in result_code for code in SUCCESS_CODES):
-    payment.status = Payment.PaymentStatus.PAID
-    payment.state = True
-    payment.transaction_id = result_data.get('id')
-    if payment.link and payment.link.unique:
-      payment.link.active = False
-      payment.link.save()
-
-    # Registro contable de la venta
-    if not hasattr(payment, 'sale_record'):
-      net_amount = payment.amount - payment.commission
-      Sale.objects.create(
-        vendor=payment.seller,
-        payment=payment,
-        amount=payment.amount,
-        commission=payment.commission,
-        net_amount=net_amount,
-      )
-
-      # Actualizar saldo del vendedor
-      if payment.seller:
-        seller = CustomUser.objects.select_for_update().get(id=payment.seller.id)
-        seller.available_balance += net_amount
-        seller.save()
-
-    # Notificar al cliente
-    try:
-      send_payment_confirmation(payment)
-    except Exception as e:
-      logger.error('Error sending payment confirmation for payment %s: %s', payment_id, e)
+def process_payment_result(payment_id: int, result_data: Any, attempt_id=None) -> Payment:
+  """Credit a bound server-fetched debit exactly once; ambiguity is not decline."""
+  payment = Payment.objects.select_for_update().get(pk=payment_id)
+  if _settled(payment):
+    return payment
+  attempts = PaymentAttempt.objects.select_for_update().filter(payment=payment)
+  if attempt_id is not None:
+    attempt = attempts.filter(pk=attempt_id).first()
   else:
-    payment.status = Payment.PaymentStatus.FAILED
-    payment.state = False
-
-  payment.save()
+    merchant = result_data.get('merchantTransactionId') if isinstance(result_data, dict) else None
+    attempt = attempts.filter(merchant_transaction_id=merchant).first() if isinstance(merchant, str) else None
+  if attempt is None:
+    return payment
+  if not _valid_result(payment, attempt, result_data):
+    if attempt.state in OPEN_ATTEMPT_STATES:
+      _record_attempt(attempt, 'UNKNOWN', 'invalid_or_unavailable_result')
+    return payment
+  code = result_data['result']['code']
+  success_codes = {'000.000.000'}
+  # Test connector responses are never approvals on the production endpoint.
+  if (settings.DATAFAST_TEST_MODE and
+      urlsplit(settings.DATAFAST_BASE_URL).hostname == 'eu-test.oppwa.com'):
+    success_codes.update({'000.100.110', '000.100.112'})
+  try:
+    # Constraints are the final race guard across different payment row locks.
+    with transaction.atomic():
+      attempt.provider_transaction_id = result_data['id']
+      if code not in success_codes and code not in DECLINE_CODES:
+        if attempt.state in OPEN_ATTEMPT_STATES:
+          _record_attempt(attempt, 'UNKNOWN', 'non_final_result', code)
+        else:
+          attempt.save(update_fields=['provider_transaction_id'])
+        return payment
+      if code in DECLINE_CODES:
+        _record_attempt(attempt, 'DECLINED', 'confirmed_decline', code)
+        if not attempts.filter(state__in=OPEN_ATTEMPT_STATES).exists():
+          payment.status = Payment.PaymentStatus.FAILED
+          payment.state = False
+          payment.save()
+        return payment
+      if not payment.seller:
+        return payment
+      seller = CustomUser.objects.select_for_update().get(pk=payment.seller.pk)
+      payment.status = Payment.PaymentStatus.PAID
+      payment.state = True
+      payment.transaction_id = result_data['id']
+      payment.commission = SELLER_FEE
+      payment.amount_client = payment.amount
+      payment.save()
+      net_amount = attempt.amount - SELLER_FEE
+      Sale.objects.create(vendor=seller, payment=payment, amount=attempt.amount,
+        commission=SELLER_FEE, net_amount=net_amount)
+      seller.available_balance += net_amount
+      seller.save(update_fields=['available_balance'])
+      _record_attempt(attempt, 'SUCCEEDED', 'confirmed_debit', code)
+      for other in attempts.filter(state__in=OPEN_ATTEMPT_STATES).exclude(pk=attempt.pk):
+        _record_attempt(other, 'SUPERSEDED', 'payment_credited_elsewhere')
+      if payment.link:
+        Link.objects.filter(pk=payment.link.pk, unique=True).update(active=False)
+  except IntegrityError:
+    payment.refresh_from_db()
+    attempt.refresh_from_db()
+    if attempt.state in OPEN_ATTEMPT_STATES:
+      _record_attempt(attempt, 'UNKNOWN', 'provider_identity_conflict')
+    return payment
+  transaction.on_commit(lambda: _confirmation_after_commit(payment))
   return payment
 
 
@@ -196,9 +344,6 @@ def request_refund(seller: CustomUser, payment: Payment, description: str) -> Re
   return Refund.objects.create(
     seller=seller, payment=payment, description=description, amount=payment.amount, state=False
   )
-
-
-from django.utils import timezone
 
 
 @transaction.atomic

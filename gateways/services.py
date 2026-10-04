@@ -1,5 +1,7 @@
 import requests
 import logging
+import re
+from urllib.parse import urlsplit
 from typing import Dict, Any, Optional
 from decimal import Decimal
 from django.conf import settings
@@ -88,30 +90,34 @@ class DatafastClient:
       response.raise_for_status()
       data = response.json()
       
-      if 'id' in data:
-        return data['id']
-      
-      logger.error(f"Datafast checkout error: {data}")
+      checkout_id = data.get('id') if isinstance(data, dict) else None
+      if isinstance(checkout_id, str) and re.fullmatch(r'[A-Za-z0-9_-][A-Za-z0-9_.-]{0,254}', checkout_id):
+        return checkout_id
+      logger.warning('Datafast checkout response unavailable or malformed')
       return None
-      
-    except Exception as e:
-      logger.exception(f"Error connecting to Datafast: {str(e)}")
+    except Exception:
+      logger.warning('Datafast checkout request unavailable')
       return None
 
   def get_payment_status(self, resource_path: str) -> Dict[str, Any]:
-    """Consulta el resultado de la transacción."""
-    # Evitar duplicación de /v1/ si resource_path ya lo incluye
-    clean_base = self.base_url.replace('/v1/', '')
-    url = f"{clean_base.rstrip('/')}{resource_path}"
+    """Fetch a canonical path; the caller must additionally bind it to a payment."""
+    if not isinstance(resource_path, str) or not re.fullmatch(
+        r'/v1/checkouts/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,254}/payment', resource_path):
+      raise ValueError('Invalid checkout result path')
+    base = urlsplit(self.base_url)
+    url = f'{base.scheme}://{base.netloc}{resource_path}'
     params = {'entityId': self.entity_id}
-    
     try:
-      response = requests.get(url, params=params, headers=self._get_headers(), timeout=10)
+      response = requests.get(url, params=params, headers=self._get_headers(),
+        timeout=10, allow_redirects=False)
       response.raise_for_status()
-      return response.json()
-    except Exception as e:
-      logger.exception(f"Error checking payment status: {str(e)}")
-      return {'result': {'code': 'ERROR', 'description': str(e)}}
+      if response.status_code != 200:
+        return {'outcome': 'UNKNOWN'}
+      data = response.json()
+      return data if isinstance(data, dict) else {'outcome': 'UNKNOWN'}
+    except Exception:
+      logger.warning('Datafast result request unavailable')
+      return {'outcome': 'UNKNOWN'}
 
   def refund_payment(self, transaction_id: str, amount: Decimal) -> Dict[str, Any]:
     """Solicita un reembolso."""

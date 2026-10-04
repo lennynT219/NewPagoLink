@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -53,6 +55,43 @@ class Payment(models.Model):
 
   def __str__(self):
     return f'{self.first_name}{self.last_name} - {self.amount}'
+
+
+def new_merchant_transaction_id():
+  return f'PAY-{uuid.uuid4().hex}'
+
+
+class PaymentAttempt(models.Model):
+  class State(models.TextChoices):
+    CREATING = 'CREATING'
+    LIVE = 'LIVE'
+    UNKNOWN = 'UNKNOWN'
+    SUCCEEDED = 'SUCCEEDED'
+    DECLINED = 'DECLINED'
+    EXPIRED = 'EXPIRED'
+    SUPERSEDED = 'SUPERSEDED'
+
+  payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name='checkout_attempts')
+  merchant_transaction_id = models.CharField(max_length=255, unique=True,
+    default=new_merchant_transaction_id)
+  checkout_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+  provider_transaction_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+  amount = models.DecimalField(max_digits=10, decimal_places=2)
+  currency = models.CharField(max_length=3, default='USD')
+  state = models.CharField(max_length=12, choices=State.choices, default=State.CREATING)
+  result_code = models.CharField(max_length=32, blank=True)
+  history = models.JSONField(default=list)
+  created_at = models.DateTimeField(auto_now_add=True)
+  updated_at = models.DateTimeField(auto_now=True)
+
+  class Meta:
+    constraints = [models.UniqueConstraint(fields=['payment'],
+      condition=models.Q(state__in=['CREATING', 'LIVE', 'UNKNOWN']),
+      name='one_open_checkout_per_payment')]
+
+  @property
+  def resource_path(self):
+    return f'/v1/checkouts/{self.checkout_id}/payment' if self.checkout_id else None
 
 
 class Sale(models.Model):
