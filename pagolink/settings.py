@@ -1,28 +1,30 @@
 import os
-import environ
+from decimal import Decimal
 from pathlib import Path
+
+import environ
+
+from pagolink.production import boolean, email_settings, invalid, required, secure_profile, validate_datafast
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-from decimal import Decimal
-
 # Initialize environ
-env = environ.Env(
-  DEBUG=(bool, False),
-  TAX_IVA=(Decimal, Decimal('0.12'))
-)
+env = environ.Env(DEBUG=(bool, False), TAX_IVA=(Decimal, Decimal('0.12')))
 
-# Read .env file
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# Legacy local bootstrap only. Explicit profiles use exported environment variables;
+# production must never accidentally inherit development .env credentials.
+if 'DJANGO_ENV' not in os.environ:
+  environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+DJANGO_ENV = os.environ.get('DJANGO_ENV', 'development')
+if DJANGO_ENV not in ('development', 'staging', 'production'):
+  invalid('DJANGO_ENV')
+STRICT_PROFILE = DJANGO_ENV in ('staging', 'production')
+SECRET_KEY = required('SECRET_KEY')
+DEBUG = boolean('DEBUG')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
-
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '').split(',') if host.strip()]
 
 
 # Application definition
@@ -126,41 +128,26 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ============================================================
-# EMAIL CONFIGURATION (Resend via django-anymail)
-# ============================================================
-# Environment-aware backend selection:
-#   EMAIL_BACKEND_MODE=resend  → Resend API (even with DEBUG=True)
-#   EMAIL_BACKEND_MODE=console → console backend (prints to stdout)
-#   (unset) + DEBUG=True       → console backend (safe local dev default)
-#   (unset) + DEBUG=False      → Resend API (production default)
-
-EMAIL_BACKEND_MODE = env('EMAIL_BACKEND_MODE', default=None)
-
-if EMAIL_BACKEND_MODE == 'resend':
-    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
-    ANYMAIL = {
-        'RESEND_API_KEY': env('RESEND_API_KEY'),
-    }
-elif EMAIL_BACKEND_MODE == 'console' or DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
-    ANYMAIL = {
-        'RESEND_API_KEY': env('RESEND_API_KEY'),
-    }
-
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='PagoLink <noreply@pagolink.ec>')
+# Explicit SMTP/Resend in strict profiles; preserve legacy development defaults.
+globals().update(email_settings(STRICT_PROFILE, DEBUG))
 
 # Register anymail as an installed app (idempotent)
 if 'anymail' not in INSTALLED_APPS:
-    INSTALLED_APPS.append('anymail')
+  INSTALLED_APPS.append('anymail')
 
 # Configuración Datafast
-DATAFAST_BASE_URL = env('DATAFAST_BASE_URL', default='https://eu-test.oppwa.com/v1/')
-DATAFAST_ENTITY_ID = env('DATAFAST_ENTITY_ID')
-DATAFAST_AUTH_TOKEN = env('DATAFAST_AUTH_TOKEN')
-DATAFAST_MID = env('DATAFAST_MID')
-DATAFAST_TID = env('DATAFAST_TID')
-DATAFAST_TEST_MODE = env('DATAFAST_TEST_MODE', default=None)
+DATAFAST_BASE_URL = (
+  required('DATAFAST_BASE_URL')
+  if STRICT_PROFILE
+  else os.environ.get('DATAFAST_BASE_URL', 'https://eu-test.oppwa.com/v1/')
+)
+DATAFAST_ENTITY_ID = required('DATAFAST_ENTITY_ID')
+DATAFAST_AUTH_TOKEN = required('DATAFAST_AUTH_TOKEN')
+DATAFAST_MID = required('DATAFAST_MID')
+DATAFAST_TID = required('DATAFAST_TID')
+DATAFAST_TEST_MODE = os.environ.get('DATAFAST_TEST_MODE')
 TAX_IVA = Decimal(os.getenv('TAX_IVA', '0.12'))
+
+if STRICT_PROFILE:
+  globals().update(secure_profile(SECRET_KEY, DEBUG))
+validate_datafast(STRICT_PROFILE, DATAFAST_BASE_URL, DATAFAST_TEST_MODE)

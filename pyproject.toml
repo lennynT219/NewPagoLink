@@ -5,12 +5,23 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "django>=5.2.8",
+    "django>=5.2.8,<5.3",
+    "gunicorn>=23.0,<24",
+    "psycopg[binary]>=3.3,<4",
     "django-anymail[resend]>=15.0",
     "django-environ>=0.13.0",
     "openpyxl>=3.1.5",
     "requests>=2.33.0",
     "six>=1.17.0",
+]
+
+# Bounded, explicitly approved transitive security remediation.
+[tool.uv]
+constraint-dependencies = [
+    "anyio==4.14.2",
+    "idna==3.15",
+    "sqlparse==0.6.0",
+    "urllib3==2.8.0",
 ]
 
 [tool.ruff]
@@ -23,4 +34,5 @@ quote-style = "single"
 [dependency-groups]
 dev = [
     "django-stubs>=5.2.8",
+    "pip-audit>=2.10,<3",
 ]
