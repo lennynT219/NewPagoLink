@@ -137,6 +137,91 @@ class DatafastClient:
     excess = max(0, -exponent - 2)
     return excess == 0 or not any(digits[-excess:])
 
+  def query_by_provider_id(self, provider_id: str) -> dict[str, Any]:
+    """Query a stored transaction ID, never a caller-supplied URL."""
+    if not self._refund_id_is_safe(provider_id):
+      return {'outcome': 'UNKNOWN'}
+    return self._query(f'/v1/query/{provider_id}', {'entityId': self.entity_id})
+
+  def query_by_merchant_id(self, merchant_id: str) -> dict[str, Any]:
+    """requests encodes the merchant identity as a query parameter, not a path."""
+    if not isinstance(merchant_id, str) or not merchant_id.strip() or len(merchant_id) > 255:
+      return {'outcome': 'UNKNOWN'}
+    return self._query('/v1/query', {'entityId': self.entity_id, 'merchantTransactionId': merchant_id})
+
+  def _query(self, path: str, params: dict[str, str]) -> dict[str, Any]:
+    unknown = {'outcome': 'UNKNOWN'}
+    try:
+      base = urlsplit(self.base_url)
+      if (
+        base.scheme != 'https'
+        or not base.hostname
+        or base.username is not None
+        or base.password is not None
+        or base.query
+        or base.fragment
+        or base.path not in ('', '/', '/v1', '/v1/')
+      ):
+        return unknown
+      token = self.auth_token.strip()
+      headers = self._get_headers()
+      headers['Authorization'] = token if token.startswith('Bearer ') else f'Bearer {token}'
+      response = requests.get(
+        f'https://{base.netloc}{path}', params=params, headers=headers, timeout=10, allow_redirects=False, verify=True
+      )
+      response.raise_for_status()
+      if response.status_code != 200:
+        return unknown
+      data = response.json(parse_float=Decimal)
+      return data if isinstance(data, dict) else unknown
+    except (requests.RequestException, ValueError, TypeError, AttributeError, ArithmeticError):
+      logger.warning('Datafast query unavailable; reconciliation unresolved')
+      return unknown
+
+  def normalize_refund_observation(self, data: Any, transaction_id: str, amount: Decimal) -> dict[str, Any]:
+    """Shared strict RF binding for POST responses and complete query records."""
+    unknown = {'outcome': 'UNKNOWN'}
+    try:
+      if not isinstance(data, dict):
+        return unknown
+      refund_id = data.get('id')
+      original_id = data.get('referencedId', data.get('referencedid'))
+      if 'referencedId' in data and 'referencedid' in data and data['referencedId'] != data['referencedid']:
+        return unknown
+      raw_amount = data.get('amount')
+      if isinstance(raw_amount, bool) or not isinstance(raw_amount, (str, int, Decimal)):
+        return unknown
+      returned_amount = Decimal(raw_amount)
+      result = data.get('result')
+      code = result.get('code') if isinstance(result, dict) else None
+      if (
+        not self._refund_id_is_safe(refund_id)
+        or original_id != transaction_id
+        or data.get('paymentType') != 'RF'
+        or data.get('currency') != 'USD'
+        or not self._refund_amount_is_valid(returned_amount)
+        or returned_amount != amount
+        or not isinstance(code, str)
+        or not re.fullmatch(r'\d{3}\.\d{3}\.\d{3}', code)
+      ):
+        return unknown
+      sandbox = urlsplit(self.base_url).netloc == 'eu-test.oppwa.com' and self.test_mode == 'EXTERNAL'
+      outcome = 'UNKNOWN'
+      if code == '000.000.000' or (sandbox and code == '000.100.112'):
+        outcome = 'CONFIRMED'
+      elif code == '800.100.174':
+        outcome = 'DECLINED'
+      return {
+        'outcome': outcome,
+        'refund_id': refund_id,
+        'original_id': original_id,
+        'amount': returned_amount,
+        'currency': 'USD',
+        'code': code,
+      }
+    except (ValueError, TypeError, ArithmeticError):
+      return unknown
+
   def refund_payment(self, transaction_id: str, amount: Decimal) -> dict[str, Any]:
     """Send one RF request; UNKNOWN requires reconciliation, never blind retry.
 
@@ -179,44 +264,7 @@ class DatafastClient:
       if response.status_code != 200:
         return unknown
       data = response.json(parse_float=Decimal)
-      if not isinstance(data, dict):
-        return unknown
-      refund_id = data.get('id')
-      original_id = data.get('referencedId', data.get('referencedid'))
-      if 'referencedId' in data and 'referencedid' in data and data['referencedId'] != data['referencedid']:
-        return unknown
-      raw_amount = data.get('amount')
-      # Reject binary floats even if a custom decoder supplies them.
-      if isinstance(raw_amount, bool) or not isinstance(raw_amount, (str, int, Decimal)):
-        return unknown
-      returned_amount = Decimal(raw_amount)
-      result = data.get('result')
-      code = result.get('code') if isinstance(result, dict) else None
-      if (
-        not self._refund_id_is_safe(refund_id)
-        or original_id != transaction_id
-        or data.get('paymentType') != 'RF'
-        or data.get('currency') != 'USD'
-        or not self._refund_amount_is_valid(returned_amount)
-        or returned_amount != amount
-        or not isinstance(code, str)
-        or not re.fullmatch(r'\d{3}\.\d{3}\.\d{3}', code)
-      ):
-        return unknown
-      outcome = 'UNKNOWN'
-      if code == '000.000.000' or (sandbox and code == '000.100.112'):
-        outcome = 'CONFIRMED'
-      elif code == '800.100.174':
-        # Documented definitive invalid-amount decline; no broad code families.
-        outcome = 'DECLINED'
-      return {
-        'outcome': outcome,
-        'refund_id': refund_id,
-        'original_id': original_id,
-        'amount': returned_amount,
-        'currency': 'USD',
-        'code': code,
-      }
+      return self.normalize_refund_observation(data, transaction_id, amount)
     except (requests.RequestException, ValueError, TypeError, ArithmeticError):
       logger.warning('Datafast refund outcome unavailable; reconciliation required')
       return unknown
