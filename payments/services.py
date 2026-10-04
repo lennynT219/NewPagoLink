@@ -1,10 +1,11 @@
 import csv
 import io
+import ipaddress
 import logging
 import re
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Protocol, cast
 from urllib.parse import urlsplit
 
 from django.conf import settings
@@ -13,12 +14,21 @@ from django.db.models import Sum
 from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 
 from accounts.models import CustomUser
+from gateways.services import PAYER_LIMITS, validate_checkout_payer, validate_client_ip
 from payments.models import Link, Payment, PaymentAttempt, Refund, Sale
 from shared.email_service import send_html_email
 
 logger = logging.getLogger(__name__)
+
+
+class _SellerReference(Protocol):
+  """Nullable integer FK descriptor shared by Payment and Refund; no relation lookup."""
+
+  @property
+  def seller_id(self) -> int | None: ...
 
 
 def calculate_tax(amount: Decimal, include_tax: bool) -> Decimal:
@@ -36,11 +46,11 @@ def send_payment_invite(payment: Payment, req: Any) -> None:
   subject = f'Invitación de pago de {payment.seller.user.get_full_name()}'
   context = {
     'payment': payment,
-    'pay_url': f'{req.scheme}://{req.get_host()}/payments/pay/{payment.link.id}/?p={payment.id}',
+    'pay_url': f'{req.scheme}://{req.get_host()}/payments/pay/{payment.link.id}/?p={payment.pk}',
   }
   ok = send_html_email(subject, [payment.email], 'payments/emails/invite_email.html', context)
   if not ok:
-    logger.error('Payment invite email failed for %s', payment.email)
+    logger.error('Payment invite email failed for payment %s', payment.pk)
 
 
 def send_payment_confirmation(payment: Payment) -> None:
@@ -51,7 +61,7 @@ def send_payment_confirmation(payment: Payment) -> None:
   subject = f'Comprobante de Pago Exitoso - {payment.description}'
   ok = send_html_email(subject, [payment.email], 'payments/emails/confirmation_email.html', {'payment': payment})
   if not ok:
-    logger.error('Payment confirmation email failed for %s', payment.email)
+    logger.error('Payment confirmation email failed for payment %s', payment.pk)
 
 
 @transaction.atomic
@@ -136,6 +146,21 @@ def _settled(payment):
   )
 
 
+def checkout_client_ip(request):
+  """Trust only the peer, or one proxy-overwritten X-Real-IP under explicit opt-in."""
+  trusted_proxy = settings.SECURE_PROXY_SSL_HEADER is not None
+  raw = request.META.get('HTTP_X_REAL_IP') if trusted_proxy else request.META.get('REMOTE_ADDR')
+  address = validate_client_ip(raw)
+  if trusted_proxy:
+    try:
+      peer = ipaddress.ip_address(request.META.get('REMOTE_ADDR', ''))
+    except ValueError as exc:
+      raise ValueError('No se pudo verificar el proxy del pagador.') from exc
+    if ipaddress.ip_address(address) == peer:
+      raise ValueError('No se pudo verificar la dirección IP del pagador detrás del proxy.')
+  return address
+
+
 def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
   """Persist reservation before I/O; concurrent retries reuse the open attempt."""
   with transaction.atomic():
@@ -149,22 +174,32 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
       raise ValueError('Este pago no tiene un link activo.')
     if not link.active:
       raise ValueError('Este link no está activo.')
-    current = PaymentAttempt.objects.select_for_update().filter(payment=payment, state__in=OPEN_ATTEMPT_STATES).first()
+    if not isinstance(customer_data, dict):
+      raise TypeError('Los datos del pagador deben ser un diccionario.')
+    customer = {key: customer_data.get(key, getattr(payment, key)) for key in PAYER_LIMITS}
+    # This identifies a recorded guest payer for this payment, not a global account.
+    customer['merchant_customer_id'] = str(payment.pk)
+    attempts = PaymentAttempt.objects.select_for_update().filter(payment=payment)
+    if attempts.exists() and any(customer[key] != getattr(payment, key) for key in PAYER_LIMITS):
+      raise ValueError('Los datos del pagador de este intento no se pueden cambiar.')
+    current = attempts.filter(state__in=OPEN_ATTEMPT_STATES).first()
+    # Start no earlier than the response, not the pre-I/O reservation.
+    # Later observations conservatively extend the local no-retry window.
+    if current and current.updated_at > timezone.now() - timedelta(minutes=30):
+      return current
+    # Only a new provider preparation requires complete payer data. Legacy
+    # callbacks and reuse of an already prepared attempt do not revalidate it.
+    validate_checkout_payer(customer, client_ip)
     if current:
-      # Start no earlier than the response, not the pre-I/O reservation.
-      # Later observations conservatively extend the local no-retry window.
-      if current.updated_at > timezone.now() - timedelta(minutes=30):
-        return current
       _record_attempt(current, 'EXPIRED', 'checkout_window_elapsed')
-    for key in ('first_name', 'last_name', 'email', 'identify', 'phone'):
-      if customer_data.get(key) is not None:
-        setattr(payment, key, customer_data[key])
+    for key in PAYER_LIMITS:
+      setattr(payment, key, customer[key])
+    payment.buyer_client_ip = validate_client_ip(client_ip)
     payment.amount_client = payment.amount
     payment.status = Payment.PaymentStatus.PENDING
     payment.save()
     attempt = PaymentAttempt.objects.create(payment=payment, amount=payment.amount)
     _record_attempt(attempt, 'CREATING', 'checkout_reserved')
-    customer = {key: getattr(payment, key) for key in ('first_name', 'last_name', 'email', 'identify', 'phone')}
 
   # A timeout may have created a remote checkout; do not blindly retry it.
   try:
@@ -177,7 +212,7 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
       customer_data=customer,
       client_ip=client_ip,
     )
-  except Exception:
+  except Exception:  # noqa: BLE001 -- Unknown provider errors remain unresolved; never blindly retry.
     checkout_id = None
   with transaction.atomic():
     Payment.objects.select_for_update().get(pk=payment_id)
@@ -239,7 +274,7 @@ def _valid_result(payment, attempt, data):
 def _confirmation_after_commit(payment):
   try:
     send_payment_confirmation(payment)
-  except Exception:
+  except Exception:  # noqa: BLE001 -- Notification errors cannot change an authoritative payment result.
     logger.warning('Payment confirmation unavailable for payment %s', payment.pk)
 
 
@@ -337,7 +372,8 @@ def generate_payments_excel(seller: CustomUser) -> io.BytesIO:
   """Genera reporte en Excel (.xlsx) con estilos."""
   payments = Payment.objects.filter(seller=seller, state=True).order_by('-id')
   wb = Workbook()
-  ws = wb.active
+  # A fresh ordinary Workbook always supplies its initial active Worksheet.
+  ws = cast(Worksheet, wb.active)
   ws.title = 'Ventas'
   headers = ['FECHA', 'CLIENTE', 'IDENTIFICACIÓN', 'CORREO', 'TOTAL', 'ID TRANSACCIÓN']
   ws.append(headers)
@@ -368,7 +404,7 @@ def generate_payments_excel(seller: CustomUser) -> io.BytesIO:
 def request_refund(seller: CustomUser, payment: Payment, description: str) -> Refund:
   """Crea una solicitud de reembolso para un pago específico."""
   payment = Payment.objects.select_for_update().get(pk=payment.pk)
-  if payment.seller_id != seller.pk:
+  if cast(_SellerReference, payment).seller_id != seller.pk:
     raise ValueError('No tiene permisos sobre este pago.')
   if payment.status != Payment.PaymentStatus.PAID:
     raise ValueError('Solo se pueden reembolsar pagos confirmados.')
@@ -460,7 +496,7 @@ def settle_refund(refund_id: int, result: Any) -> Refund:
     refund.provider_refund_id = result['refund_id']
     _record_refund(refund, 'UNKNOWN', 'UNKNOWN', 'non_final_result', code)
     return refund
-  seller = CustomUser.objects.select_for_update().get(pk=refund.seller_id)
+  seller = CustomUser.objects.select_for_update().get(pk=cast(_SellerReference, refund).seller_id)
   refund.provider_refund_id = result['refund_id']
   refund.processed_by = refund.initiated_by
   refund.processed_at = timezone.now()
@@ -492,7 +528,7 @@ def approve_refund_logic(refund_id: int, admin_user: Any, gateway=None) -> Refun
       raise ValueError('Este reembolso ya está procesado o en revisión. No reenviar.')
     if not _refund_binding_valid(payment, refund):
       raise ValueError('El reembolso no corresponde a un pago confirmado válido.')
-    seller = CustomUser.objects.select_for_update().get(pk=refund.seller_id)
+    seller = CustomUser.objects.select_for_update().get(pk=cast(_SellerReference, refund).seller_id)
     if seller.available_balance < refund.amount:
       raise ValueError('Saldo insuficiente: se requiere el monto total del pago para reembolsar.')
     seller.available_balance -= refund.amount
@@ -505,12 +541,12 @@ def approve_refund_logic(refund_id: int, admin_user: Any, gateway=None) -> Refun
 
   try:
     result = (gateway or DatafastClient()).refund_payment(refund.original_transaction_id, refund.amount)
-  except Exception:
+  except Exception:  # noqa: BLE001 -- Unknown provider errors remain unresolved, retaining refund holds.
     # Exception text/payloads may contain credentials. Never persist or show them.
     result = {'outcome': 'UNKNOWN'}
   try:
     return settle_refund(refund.pk, result)
-  except Exception:
+  except Exception:  # noqa: BLE001 -- Unknown settlement errors must retain the committed refund hold.
     # Even a DB failure after RF must leave the committed PROCESSING hold intact.
     # Never resend, release, or claim approval based on an in-memory response.
     logger.warning('Refund %s settlement unavailable; reconciliation required', refund.pk)

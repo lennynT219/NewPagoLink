@@ -48,41 +48,19 @@
                 Tus Datos
             </h4>
 
+            <p>Ingresa tus datos reales como pagador, no los del vendedor. Todos los datos indicados son obligatorios.</p>
+            <p>Si no tienes segundo nombre, no inventes ni repitas uno. Contacta a soporte antes de pagar.</p>
+            {{ form.non_field_errors }}
             <div class="grid-2" style="margin-bottom: var(--space-4);">
+                {% for field in form %}
                 <div>
-                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
-                        Nombre
+                    <label for="{{ field.id_for_label }}" style="display: block; margin-bottom: var(--space-1);">
+                        {{ field.label }}
                     </label>
-                    <input type="text" name="first_name" class="input-modern" required placeholder="Ej. Juan">
+                    {{ field }}
+                    {{ field.errors }}
                 </div>
-                <div>
-                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
-                        Apellido
-                    </label>
-                    <input type="text" name="last_name" class="input-modern" required placeholder="Ej. Pérez">
-                </div>
-            </div>
-
-            <div style="margin-bottom: var(--space-4);">
-                <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
-                    Correo Electrónico
-                </label>
-                <input type="email" name="email" class="input-modern" required placeholder="tu@email.com">
-            </div>
-
-            <div class="grid-2" style="margin-bottom: var(--space-4);">
-                <div>
-                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
-                        Cédula/RUC
-                    </label>
-                    <input type="text" name="identify" class="input-modern" required placeholder="0000000000">
-                </div>
-                <div>
-                    <label style="display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--gray-700); margin-bottom: var(--space-1);">
-                        Teléfono
-                    </label>
-                    <input type="text" name="phone" class="input-modern" required placeholder="0999999999">
-                </div>
+                {% endfor %}
             </div>
 
             <button type="submit" class="btn-primary-auth" style="width: 100%; justify-content: center; margin-top: var(--space-2);">

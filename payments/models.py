@@ -1,4 +1,5 @@
 import uuid
+from typing import ClassVar
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -45,6 +46,13 @@ class Payment(models.Model):
   email = models.EmailField()
   identify = models.CharField(max_length=20)
   phone = models.CharField(max_length=15)
+  # Additive nullable fields preserve historical and invitation-only rows.
+  buyer_middle_name = models.CharField(max_length=50, blank=True, null=True)
+  billing_street = models.CharField(max_length=100, blank=True, null=True)
+  shipping_street = models.CharField(max_length=100, blank=True, null=True)
+  billing_country = models.CharField(max_length=2, blank=True, null=True)
+  shipping_country = models.CharField(max_length=2, blank=True, null=True)
+  buyer_client_ip = models.GenericIPAddressField(blank=True, null=True)
 
   description = models.CharField(max_length=255)
   subtotal = models.DecimalField(max_digits=10, decimal_places=2)
@@ -87,7 +95,7 @@ class PaymentAttempt(models.Model):
   updated_at = models.DateTimeField(auto_now=True)
 
   class Meta:
-    constraints = [
+    constraints: ClassVar[list[models.BaseConstraint]] = [
       models.UniqueConstraint(
         fields=['payment'],
         condition=models.Q(state__in=['CREATING', 'LIVE', 'UNKNOWN']),

@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 import re
 from decimal import Decimal
@@ -8,6 +9,356 @@ import requests
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+# Shared by the public form and the service/SDK boundaries. Never log values.
+PAYER_LIMITS = {
+  'first_name': (3, 48),
+  'buyer_middle_name': (2, 50),
+  'last_name': (3, 48),
+  'email': (6, 128),
+  'identify': (1, 13),
+  'phone': (7, 15),
+  'billing_street': (1, 100),
+  'shipping_street': (1, 100),
+  'billing_country': (2, 2),
+  'shipping_country': (2, 2),
+}
+PLACEHOLDERS = {
+  'sn',
+  's/n',
+  'na',
+  'n/a',
+  'cliente',
+  'pagolink',
+  'ecuador main street',
+  'ecuador delivery street',
+  '0999999999',
+  '0000000000',
+}
+# ISO 3166-1 alpha-2 codes, not a default country inferred from the merchant.
+COUNTRY_CODES = {
+  'AD',
+  'AE',
+  'AF',
+  'AG',
+  'AI',
+  'AL',
+  'AM',
+  'AO',
+  'AQ',
+  'AR',
+  'AS',
+  'AT',
+  'AU',
+  'AW',
+  'AX',
+  'AZ',
+  'BA',
+  'BB',
+  'BD',
+  'BE',
+  'BF',
+  'BG',
+  'BH',
+  'BI',
+  'BJ',
+  'BL',
+  'BM',
+  'BN',
+  'BO',
+  'BQ',
+  'BR',
+  'BS',
+  'BT',
+  'BV',
+  'BW',
+  'BY',
+  'BZ',
+  'CA',
+  'CC',
+  'CD',
+  'CF',
+  'CG',
+  'CH',
+  'CI',
+  'CK',
+  'CL',
+  'CM',
+  'CN',
+  'CO',
+  'CR',
+  'CU',
+  'CV',
+  'CW',
+  'CX',
+  'CY',
+  'CZ',
+  'DE',
+  'DJ',
+  'DK',
+  'DM',
+  'DO',
+  'DZ',
+  'EC',
+  'EE',
+  'EG',
+  'EH',
+  'ER',
+  'ES',
+  'ET',
+  'FI',
+  'FJ',
+  'FK',
+  'FM',
+  'FO',
+  'FR',
+  'GA',
+  'GB',
+  'GD',
+  'GE',
+  'GF',
+  'GG',
+  'GH',
+  'GI',
+  'GL',
+  'GM',
+  'GN',
+  'GP',
+  'GQ',
+  'GR',
+  'GS',
+  'GT',
+  'GU',
+  'GW',
+  'GY',
+  'HK',
+  'HM',
+  'HN',
+  'HR',
+  'HT',
+  'HU',
+  'ID',
+  'IE',
+  'IL',
+  'IM',
+  'IN',
+  'IO',
+  'IQ',
+  'IR',
+  'IS',
+  'IT',
+  'JE',
+  'JM',
+  'JO',
+  'JP',
+  'KE',
+  'KG',
+  'KH',
+  'KI',
+  'KM',
+  'KN',
+  'KP',
+  'KR',
+  'KW',
+  'KY',
+  'KZ',
+  'LA',
+  'LB',
+  'LC',
+  'LI',
+  'LK',
+  'LR',
+  'LS',
+  'LT',
+  'LU',
+  'LV',
+  'LY',
+  'MA',
+  'MC',
+  'MD',
+  'ME',
+  'MF',
+  'MG',
+  'MH',
+  'MK',
+  'ML',
+  'MM',
+  'MN',
+  'MO',
+  'MP',
+  'MQ',
+  'MR',
+  'MS',
+  'MT',
+  'MU',
+  'MV',
+  'MW',
+  'MX',
+  'MY',
+  'MZ',
+  'NA',
+  'NC',
+  'NE',
+  'NF',
+  'NG',
+  'NI',
+  'NL',
+  'NO',
+  'NP',
+  'NR',
+  'NU',
+  'NZ',
+  'OM',
+  'PA',
+  'PE',
+  'PF',
+  'PG',
+  'PH',
+  'PK',
+  'PL',
+  'PM',
+  'PN',
+  'PR',
+  'PS',
+  'PT',
+  'PW',
+  'PY',
+  'QA',
+  'RE',
+  'RO',
+  'RS',
+  'RU',
+  'RW',
+  'SA',
+  'SB',
+  'SC',
+  'SD',
+  'SE',
+  'SG',
+  'SH',
+  'SI',
+  'SJ',
+  'SK',
+  'SL',
+  'SM',
+  'SN',
+  'SO',
+  'SR',
+  'SS',
+  'ST',
+  'SV',
+  'SX',
+  'SY',
+  'SZ',
+  'TC',
+  'TD',
+  'TF',
+  'TG',
+  'TH',
+  'TJ',
+  'TK',
+  'TL',
+  'TM',
+  'TN',
+  'TO',
+  'TR',
+  'TT',
+  'TV',
+  'TW',
+  'TZ',
+  'UA',
+  'UG',
+  'UM',
+  'US',
+  'UY',
+  'UZ',
+  'VA',
+  'VC',
+  'VE',
+  'VG',
+  'VI',
+  'VN',
+  'VU',
+  'WF',
+  'WS',
+  'YE',
+  'YT',
+  'ZA',
+  'ZM',
+  'ZW',
+}
+
+
+def validate_payer_field(key, value):
+  minimum, maximum = PAYER_LIMITS[key]
+  if value is None:
+    raise ValueError('Complete los datos obligatorios del pagador.')
+  if not isinstance(value, str):
+    raise TypeError('Los datos del pagador deben ser texto.')
+  if not minimum <= len(value) <= maximum or value != value.strip():
+    raise ValueError('Complete los datos obligatorios del pagador con la longitud indicada.')
+  if not value.isprintable() or (
+    key not in ('billing_country', 'shipping_country') and value.casefold() in PLACEHOLDERS
+  ):
+    raise ValueError('Ingrese datos reales del pagador, sin valores por defecto.')
+  if key in ('first_name', 'buyer_middle_name', 'last_name') and not all(
+    char.isalnum() or char == ' ' for char in value
+  ):
+    raise ValueError('Ingrese nombres y apellidos alfanuméricos reales.')
+  if key == 'email':
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
+
+    try:
+      validate_email(value)
+    except ValidationError as exc:
+      raise ValueError('Ingrese un correo electrónico válido.') from exc
+  if key == 'identify' and (
+    not value.isascii() or not value.isalnum() or (len(value) > 10 and (len(value) != 13 or not value.isdecimal()))
+  ):
+    raise ValueError('Ingrese un documento de hasta 10 caracteres o un RUC de 13 dígitos.')
+  if key == 'phone' and not all(char.isalnum() or char in '+ -()' for char in value):
+    raise ValueError('Ingrese un teléfono válido.')
+  if key.endswith('_country') and value not in COUNTRY_CODES:
+    raise ValueError('Seleccione el código ISO de país de dos letras mayúsculas.')
+  return value
+
+
+def validate_client_ip(value):
+  if value is None:
+    raise ValueError('No se pudo verificar la dirección IP del pagador.')
+  if not isinstance(value, str):
+    raise TypeError('La dirección IP del pagador debe ser texto.')
+  try:
+    if value != value.strip() or '%' in value:
+      raise ValueError
+    address = ipaddress.ip_address(value)
+    effective = address.ipv4_mapped if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped else address
+    # Development tests may use documentation-only IPs; strict profiles may not.
+    if effective.is_loopback or effective.is_unspecified or effective.is_multicast or effective.is_link_local:
+      raise ValueError
+    if settings.STRICT_PROFILE and not effective.is_global:
+      raise ValueError
+  except ValueError as exc:
+    raise ValueError('No se pudo verificar la dirección IP del pagador.') from exc
+  return str(address)
+
+
+def validate_checkout_payer(customer_data, client_ip):
+  if customer_data is None:
+    raise ValueError('Complete los datos obligatorios del pagador.')
+  if not isinstance(customer_data, dict):
+    raise TypeError('Los datos del pagador deben ser un diccionario.')
+  for key in PAYER_LIMITS:
+    validate_payer_field(key, customer_data.get(key))
+  reference = customer_data.get('merchant_customer_id')
+  if reference is None:
+    raise ValueError('Referencia interna del pagador inválida.')
+  if not isinstance(reference, str):
+    raise TypeError('La referencia interna del pagador debe ser texto.')
+  if not re.fullmatch(r'[1-9][0-9]{0,15}', reference):
+    raise ValueError('Referencia interna del pagador inválida.')
+  validate_client_ip(client_ip)
 
 
 class DatafastClient:
@@ -40,6 +391,7 @@ class DatafastClient:
     """
     Inicia una sesión de checkout (Fase 2) con desglose de impuestos.
     """
+    validate_checkout_payer(customer_data, client_ip)
     url = f'{self.base_url}checkouts'
 
     # Lógica de Impuestos según Datafast Ecuador
@@ -52,9 +404,9 @@ class DatafastClient:
       base_0 = Decimal('0.00')
       val_iva = igv
     else:
-      base_imp = Decimal('0.00')
-      base_0 = subtotal
-      val_iva = Decimal('0.00')
+      base_imp = Decimal('0.00')  # noqa: F841 -- Preserve the existing calculation for T5b2 tax payload work.
+      base_0 = subtotal  # noqa: F841 -- Preserve the existing calculation for T5b2 tax payload work.
+      val_iva = Decimal('0.00')  # noqa: F841 -- Preserve the existing calculation for T5b2 tax payload work.
 
     payload = {
       'entityId': self.entity_id,
@@ -63,18 +415,20 @@ class DatafastClient:
       'paymentType': 'DB',
       'merchantTransactionId': transaction_id,
       # Datos del Cliente (Obligatorios Fase 2)
-      'customer.givenName': customer_data.get('first_name', 'Cliente'),
-      'customer.surname': customer_data.get('last_name', 'PagoLink'),
-      'customer.email': customer_data.get('email', ''),
+      'customer.givenName': customer_data['first_name'],
+      'customer.middleName': customer_data['buyer_middle_name'],
+      'customer.surname': customer_data['last_name'],
+      'customer.email': customer_data['email'],
+      'customer.merchantCustomerId': customer_data['merchant_customer_id'],
       'customer.ip': client_ip,
       'customer.identificationDocType': 'IDCARD',
-      'customer.identificationDocId': str(customer_data.get('identify', ''))[:10],  # Max 10 caracteres
-      'customer.phone': customer_data.get('phone', ''),
+      'customer.identificationDocId': customer_data['identify'][:10].zfill(10),
+      'customer.phone': customer_data['phone'],
       # Direcciones (Obligatorios)
-      'billing.street1': 'Ecuador Main Street',
-      'billing.country': 'EC',
-      'shipping.street1': 'Ecuador Delivery Street',
-      'shipping.country': 'EC',
+      'billing.street1': customer_data['billing_street'],
+      'billing.country': customer_data['billing_country'],
+      'shipping.street1': customer_data['shipping_street'],
+      'shipping.country': customer_data['shipping_country'],
       # Parámetros Personalizados Datafast
       'customParameters[SHOPPER_MID]': self.mid,
       'customParameters[SHOPPER_TID]': self.tid,
@@ -97,7 +451,7 @@ class DatafastClient:
         return checkout_id
       logger.warning('Datafast checkout response unavailable or malformed')
       return None
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Unknown provider errors must remain unresolved, retaining holds.
       logger.warning('Datafast checkout request unavailable')
       return None
 
@@ -117,7 +471,7 @@ class DatafastClient:
         return {'outcome': 'UNKNOWN'}
       data = response.json()
       return data if isinstance(data, dict) else {'outcome': 'UNKNOWN'}
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Unknown provider errors must remain unresolved, retaining holds.
       logger.warning('Datafast result request unavailable')
       return {'outcome': 'UNKNOWN'}
 

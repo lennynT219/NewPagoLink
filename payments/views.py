@@ -1,4 +1,5 @@
 import re
+from typing import Protocol, cast
 
 from django.conf import settings
 from django.contrib import messages
@@ -10,12 +11,20 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, ListView
 
+from accounts.models import CustomUser
 from dashboard.mixins import AdminRequiredMixin, ContractRequiredMixin
-from gateways.services import DatafastClient
+from gateways.services import PAYER_LIMITS, DatafastClient
 
 from . import services
-from .forms import LinkForm
+from .forms import CheckoutForm, LinkForm
 from .models import Link, Payment, PaymentAttempt, Refund
+
+
+class _ProfileUser(Protocol):
+  """Generated reverse relation used only behind existing login/contract guards."""
+
+  @property
+  def customuser(self) -> CustomUser: ...
 
 
 class AdminRefundListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
@@ -43,7 +52,7 @@ class AdminRefundApproveView(LoginRequiredMixin, AdminRequiredMixin, View):
         messages.warning(request, 'Resultado pendiente de conciliación; fondos reservados. No reenviar.')
     except ValueError as exc:
       messages.error(request, str(exc))
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Unknown refund failures remain unresolved; never imply approval.
       messages.error(request, 'No se pudo verificar el reembolso. No reenviar; contacte a soporte.')
     return redirect('payments:admin_refund_list')
 
@@ -70,7 +79,9 @@ class LinkCheckoutView(View):
       {
         'link': link,
         'seller': link.seller,
-        'payment': payment,  # Pasamos el pago para pre-rellenar campos en el HTML
+        'payment': payment,
+        # A public record selector is not authority to disclose saved payer data.
+        'form': CheckoutForm(),
         'DATAFAST_BASE_URL': settings.DATAFAST_BASE_URL,
       },
     )
@@ -84,13 +95,19 @@ class LinkCheckoutView(View):
     if payment_id:
       payment = get_object_or_404(Payment, id=payment_id, link=link)
 
-    customer_data = {
-      'first_name': request.POST.get('first_name'),
-      'last_name': request.POST.get('last_name'),
-      'email': request.POST.get('email'),
-      'identify': request.POST.get('identify'),
-      'phone': request.POST.get('phone'),
-    }
+    if payment and services._settled(payment):
+      messages.error(request, 'Este pago ya ha sido procesado.')
+      return redirect('payments:link_checkout', pk=pk)
+    form = CheckoutForm(request.POST)
+    valid = form.is_valid()
+    try:
+      client_ip = services.checkout_client_ip(request)
+    except (ValueError, TypeError) as exc:
+      form.add_error(None, str(exc))
+      return self.render_info(request, link, payment, form)
+    if not valid:
+      return self.render_info(request, link, payment, form)
+    customer_data = {key: form.cleaned_data[key] for key in PAYER_LIMITS}
 
     if not payment:
       # Crear pago nuevo (pago directo desde link múltiple)
@@ -106,15 +123,11 @@ class LinkCheckoutView(View):
       )
 
     gateway = DatafastClient()
-    from accounts.services import get_client_ip
-
-    client_ip = get_client_ip(request)
-
     try:
       attempt = services.prepare_payment_checkout(payment.pk, gateway, customer_data, client_ip)
-    except ValueError as exc:
-      messages.error(request, str(exc))
-      return redirect('payments:link_checkout', pk=pk)
+    except (ValueError, TypeError) as exc:
+      form.add_error(None, str(exc))
+      return self.render_info(request, link, payment, form)
     payment.refresh_from_db()
     checkout_id = attempt.checkout_id
     if checkout_id and attempt.state == PaymentAttempt.State.LIVE:
@@ -129,8 +142,21 @@ class LinkCheckoutView(View):
           'DATAFAST_BASE_URL': settings.DATAFAST_BASE_URL,
         },
       )
-    messages.error(request, 'Error de conexión con la pasarela.')
-    return redirect('payments:link_checkout', pk=pk)
+    form.add_error(None, 'No se pudo confirmar el intento. No reenviar; contacte a soporte.')
+    return self.render_info(request, link, payment, form)
+
+  def render_info(self, request, link, payment, form):
+    return render(
+      request,
+      self.template_name,
+      {
+        'link': link,
+        'seller': link.seller,
+        'payment': payment,
+        'form': form,
+        'DATAFAST_BASE_URL': settings.DATAFAST_BASE_URL,
+      },
+    )
 
 
 class PaymentResultView(View):
@@ -183,7 +209,7 @@ class PaymentListView(LoginRequiredMixin, ContractRequiredMixin, ListView):
   context_object_name = 'payments'
 
   def get_queryset(self):
-    return Payment.objects.filter(seller=self.request.user.customuser).order_by('-id')
+    return Payment.objects.filter(seller=cast(_ProfileUser, self.request.user).customuser).order_by('-id')
 
   def get_context_data(self, **kwargs):
     context = super().get_context_data(**kwargs)
@@ -220,7 +246,7 @@ class RefundListView(LoginRequiredMixin, ContractRequiredMixin, ListView):
   context_object_name = 'refunds'
 
   def get_queryset(self):
-    return Refund.objects.filter(seller=self.request.user.customuser).order_by('-id')
+    return Refund.objects.filter(seller=cast(_ProfileUser, self.request.user).customuser).order_by('-id')
 
 
 class RefundRequestView(LoginRequiredMixin, ContractRequiredMixin, View):
@@ -246,7 +272,7 @@ class RefundRequestView(LoginRequiredMixin, ContractRequiredMixin, View):
       return redirect('payments:payment_history')
     except ValueError as exc:
       messages.error(request, str(exc))
-    except Exception:
+    except Exception:  # noqa: BLE001 -- Unknown refund errors must not imply settlement or release.
       messages.error(request, 'No se pudo registrar la solicitud. Contacte a soporte.')
     return render(request, self.template_name, {'payment': payment})
 
@@ -259,7 +285,7 @@ class LinkDetailView(LoginRequiredMixin, ContractRequiredMixin, ListView):
   context_object_name = 'payments'
 
   def get_queryset(self):
-    self.link = get_object_or_404(Link, pk=self.kwargs['pk'], seller=self.request.user.customuser)
+    self.link = get_object_or_404(Link, pk=self.kwargs['pk'], seller=cast(_ProfileUser, self.request.user).customuser)
     return Payment.objects.filter(link=self.link).order_by('-id')
 
   def get_context_data(self, **kwargs):
@@ -274,7 +300,7 @@ class LinkListView(LoginRequiredMixin, ContractRequiredMixin, ListView):
   context_object_name = 'links'
 
   def get_queryset(self):
-    return Link.objects.filter(seller=self.request.user.customuser).order_by('-created_at')
+    return Link.objects.filter(seller=cast(_ProfileUser, self.request.user).customuser).order_by('-created_at')
 
 
 class LinkCreateView(LoginRequiredMixin, ContractRequiredMixin, CreateView):
@@ -284,13 +310,13 @@ class LinkCreateView(LoginRequiredMixin, ContractRequiredMixin, CreateView):
   success_url = reverse_lazy('payments:link_list')
 
   def form_valid(self, form):
-    link = services.create_payment_link(self.request.user.customuser, form.cleaned_data)
+    link = services.create_payment_link(cast(_ProfileUser, self.request.user).customuser, form.cleaned_data)
 
     # Si se proporcionaron datos del cliente, creamos un registro de pago y enviamos invitación
     if form.cleaned_data.get('email'):
       payment = Payment.objects.create(
         link=link,
-        seller=self.request.user.customuser,
+        seller=cast(_ProfileUser, self.request.user).customuser,
         description=link.description,
         subtotal=link.subtotal,
         igv=link.igv,
@@ -304,8 +330,9 @@ class LinkCreateView(LoginRequiredMixin, ContractRequiredMixin, CreateView):
       )
       try:
         services.send_payment_invite(payment, self.request)
-      except Exception as e:
-        print(f'Error enviando invitación: {e}')
+      except Exception:  # noqa: BLE001 -- Notification errors must not expose payer data or provider details.
+        services.logger.warning('Payment invite unavailable for payment %s', payment.pk)
 
     messages.success(self.request, '¡Link creado exitosamente! Se ha enviado una invitación al cliente.')
-    return redirect(self.success_url)
+    # The fixed reverse_lazy target above is non-null; cast preserves the Promise itself.
+    return redirect(cast(str, self.success_url))

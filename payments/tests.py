@@ -1,8 +1,10 @@
 from decimal import Decimal
+from typing import cast
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core import mail
+from django.core.mail import EmailMultiAlternatives
 from django.test import RequestFactory, TestCase
 
 from accounts.models import CustomUser
@@ -80,8 +82,8 @@ class SendPaymentInviteTest(TestCase):
     request = self.factory.get('/')
     send_payment_invite(self.payment, request)
 
-    msg = mail.outbox[0]
-    html_body = next(content for content, mime in msg.alternatives if mime == 'text/html')
+    msg = cast(EmailMultiAlternatives, mail.outbox[0])
+    html_body = cast(str, next(content for content, mime in msg.alternatives if mime == 'text/html'))
     self.assertIn('/payments/pay/', html_body, 'Invite email must contain pay URL')
 
   def test_invite_no_email_returns_early(self) -> None:
@@ -162,8 +164,8 @@ class SendPaymentConfirmationTest(TestCase):
 
     send_payment_confirmation(self.payment)
 
-    msg = mail.outbox[0]
-    html_body = next(content for content, mime in msg.alternatives if mime == 'text/html')
+    msg = cast(EmailMultiAlternatives, mail.outbox[0])
+    html_body = cast(str, next(content for content, mime in msg.alternatives if mime == 'text/html'))
     self.assertIn('Pago confirmado', html_body, 'Confirmation email should reference payment description')
 
   def test_confirmation_no_email_returns_early(self) -> None:
@@ -190,9 +192,8 @@ class PrintToLoggerTest(TestCase):
     source = inspect.getsource(mod)
     tree = ast.parse(source)
     for node in ast.walk(tree):
-      if isinstance(node, ast.Call):
-        if isinstance(node.func, ast.Name) and node.func.id == 'print':
-          self.fail(f'C4: print() found in accounts/services.py at line {node.lineno}. Replace with logger.error()')
+      if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'print':
+        self.fail(f'C4: print() found in accounts/services.py at line {node.lineno}. Replace with logger.error()')
 
   def test_payments_services_no_print_for_errors(self) -> None:
     """C4: payments/services.py must use logger.error(), not print()."""
@@ -204,9 +205,8 @@ class PrintToLoggerTest(TestCase):
     source = inspect.getsource(mod)
     tree = ast.parse(source)
     for node in ast.walk(tree):
-      if isinstance(node, ast.Call):
-        if isinstance(node.func, ast.Name) and node.func.id == 'print':
-          self.fail(f'C4: print() found in payments/services.py at line {node.lineno}. Replace with logger.error()')
+      if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'print':
+        self.fail(f'C4: print() found in payments/services.py at line {node.lineno}. Replace with logger.error()')
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -714,9 +714,22 @@ class CheckoutTemplateTests(TestCase):
     """Submit button must use .btn-primary-auth."""
     self.assertIn('btn-primary-auth', self.content, 'checkout.html must use btn-primary-auth class')
 
+  def rendered_checkout(self):
+    """Render the actual bound-form widgets instead of inspecting their Python source."""
+    from django.template.loader import render_to_string
+
+    from payments.forms import CheckoutForm
+    from payments.test_checkout_data import payer_input
+
+    return render_to_string(
+      'payments/checkout.html',
+      {'form': CheckoutForm(payer_input())},
+      request=RequestFactory().get('/synthetic-checkout'),
+    )
+
   def test_checkout_has_input_modern(self):
-    """Form fields must use .input-modern."""
-    self.assertIn('input-modern', self.content, 'checkout.html must use input-modern for form fields')
+    """Form fields must use .input-modern in rendered checkout HTML."""
+    self.assertIn('input-modern', self.rendered_checkout(), 'checkout must use input-modern for form fields')
 
   # ── Context variables preserved ──
 
@@ -735,12 +748,22 @@ class CheckoutTemplateTests(TestCase):
   # ── Form fields preserved ──
 
   def test_checkout_preserves_form_fields(self):
-    """All buyer form fields must be preserved."""
-    self.assertIn('name="first_name"', self.content)
-    self.assertIn('name="last_name"', self.content)
-    self.assertIn('name="email"', self.content)
-    self.assertIn('name="identify"', self.content)
-    self.assertIn('name="phone"', self.content)
+    """All original and newly mandatory payer fields must appear in rendered HTML."""
+    content = self.rendered_checkout()
+    for field in (
+      'first_name',
+      'last_name',
+      'email',
+      'identify',
+      'phone',
+      'buyer_middle_name',
+      'billing_street',
+      'shipping_street',
+      'billing_country',
+      'shipping_country',
+      'shipping_same_as_billing',
+    ):
+      self.assertIn(f'name="{field}"', content)
 
   def test_checkout_preserves_csrf(self):
     """CSRF token must be preserved."""
