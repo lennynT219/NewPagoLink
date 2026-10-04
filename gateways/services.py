@@ -8,6 +8,8 @@ from urllib.parse import urlsplit
 import requests
 from django.conf import settings
 
+from pagolink.production import validate_checkout_metadata
+
 logger = logging.getLogger(__name__)
 
 # Shared by the public form and the service/SDK boundaries. Never log values.
@@ -361,6 +363,38 @@ def validate_checkout_payer(customer_data, client_ip):
   validate_client_ip(client_ip)
 
 
+def validate_checkout_cart(amount, subtotal, igv, product_description):
+  """Validate a single persisted charge without rewriting or recalculating it."""
+  if (
+    not isinstance(product_description, str)
+    or not product_description.strip()
+    or not 1 <= len(product_description) <= 255
+    or not product_description.isprintable()
+    or '&' in product_description
+  ):
+    raise ValueError('La descripción del pago no es compatible con el checkout.')
+  cents = []
+  for value in (amount, subtotal, igv):
+    if not isinstance(value, Decimal) or not value.is_finite() or value < 0:
+      raise ValueError('Los montos del pago deben ser decimales válidos.')
+    numerator, denominator = value.as_integer_ratio()
+    whole_cents, remainder = divmod(numerator * 100, denominator)
+    if remainder:
+      raise ValueError('Los montos del pago deben tener centavos exactos.')
+    cents.append(whole_cents)
+  if cents[1] + cents[2] != cents[0]:
+    raise ValueError('El desglose del pago no coincide con el total.')
+
+
+def checkout_authorization(token):
+  if not isinstance(token, str) or not token.strip() or not token.isprintable():
+    raise ValueError('Configuración de autorización de checkout inválida.')
+  raw = token.removeprefix('Bearer ')
+  if not raw or any(char.isspace() for char in raw) or raw.casefold() == 'bearer':
+    raise ValueError('Configuración de autorización de checkout inválida.')
+  return f'Bearer {raw}'
+
+
 class DatafastClient:
   """
   Cliente técnico para la integración con Datafast (Ecuador) - Fase 2.
@@ -387,12 +421,39 @@ class DatafastClient:
     transaction_id: str,
     customer_data: dict[str, Any],
     client_ip: str,
+    *,
+    product_description: str,
   ) -> str | None:
     """
     Inicia una sesión de checkout (Fase 2) con desglose de impuestos.
     """
     validate_checkout_payer(customer_data, client_ip)
-    url = f'{self.base_url}checkouts'
+    validate_checkout_cart(amount, subtotal, igv, product_description)
+    validate_checkout_metadata(
+      settings.DATAFAST_ECI,
+      settings.DATAFAST_PSERV,
+      settings.DATAFAST_MERCHANT_NAME,
+      settings.DATAFAST_CART_PRICE_BASIS,
+    )
+    cart_price = subtotal if settings.DATAFAST_CART_PRICE_BASIS == 'net' else amount
+    if not re.fullmatch(r'[0-9]{1,10}\.[0-9]{2}', format(cart_price, '.2f')):
+      raise ValueError('El precio del pago no es compatible con el checkout.')
+    headers = self._get_headers()
+    headers['Authorization'] = checkout_authorization(self.auth_token)
+    base = urlsplit(self.base_url)
+    if (
+      base.scheme != 'https'
+      or not base.hostname
+      or base.username is not None
+      or base.password is not None
+      or base.query
+      or base.fragment
+      or base.path not in ('', '/', '/v1', '/v1/')
+    ):
+      raise ValueError('Configuración de endpoint de checkout inválida.')
+    if self.test_mode and (self.test_mode != 'EXTERNAL' or base.netloc != 'eu-test.oppwa.com'):
+      raise ValueError('Configuración de modo de prueba de checkout inválida.')
+    url = f'https://{base.netloc}/v1/checkouts'
 
     # Lógica de Impuestos según Datafast Ecuador
     # SHOPPER_VAL_BASEIMP: Base que grava IVA
@@ -404,9 +465,9 @@ class DatafastClient:
       base_0 = Decimal('0.00')
       val_iva = igv
     else:
-      base_imp = Decimal('0.00')  # noqa: F841 -- Preserve the existing calculation for T5b2 tax payload work.
-      base_0 = subtotal  # noqa: F841 -- Preserve the existing calculation for T5b2 tax payload work.
-      val_iva = Decimal('0.00')  # noqa: F841 -- Preserve the existing calculation for T5b2 tax payload work.
+      base_imp = Decimal('0.00')
+      base_0 = subtotal
+      val_iva = Decimal('0.00')
 
     payload = {
       'entityId': self.entity_id,
@@ -433,17 +494,27 @@ class DatafastClient:
       'customParameters[SHOPPER_MID]': self.mid,
       'customParameters[SHOPPER_TID]': self.tid,
       'customParameters[SHOPPER_VERSIONDF]': '2',
-      # Parámetros de Riesgo
-      'risk.parameters[USER_DATA2]': 'PagoLinkExpress',
+      'customParameters[SHOPPER_VAL_BASE0]': f'{base_0:.2f}',
+      'customParameters[SHOPPER_VAL_BASEIMP]': f'{base_imp:.2f}',
+      'customParameters[SHOPPER_VAL_IVA]': f'{val_iva:.2f}',
+      'customParameters[SHOPPER_ECI]': settings.DATAFAST_ECI,
+      'customParameters[SHOPPER_PSERV]': settings.DATAFAST_PSERV,
+      'cart.items[0].name': product_description,
+      'cart.items[0].description': product_description,
+      'cart.items[0].price': f'{cart_price:.2f}',
+      'cart.items[0].quantity': '1',
+      # Identidad comercial registrada y aprobada, no marca de la interfaz.
+      'risk.parameters[USER_DATA2]': settings.DATAFAST_MERCHANT_NAME,
     }
 
-    # Modo de Prueba (Comentado si causa conflicto con este MID)
-    # if self.test_mode:
-    #   payload['testMode'] = self.test_mode
+    if self.test_mode == 'EXTERNAL':
+      payload['testMode'] = self.test_mode
 
     try:
-      response = requests.post(url, data=payload, headers=self._get_headers(), timeout=15)
+      response = requests.post(url, data=payload, headers=headers, timeout=15, allow_redirects=False)
       response.raise_for_status()
+      if response.status_code != 200:
+        return None
       data = response.json()
 
       checkout_id = data.get('id') if isinstance(data, dict) else None

@@ -42,11 +42,18 @@ class DatafastStatusTests(SimpleTestCase):
     self.assertFalse(get.call_args.kwargs['allow_redirects'])
 
   def test_checkout_forwards_reserved_merchant_and_gross(self):
-    response = Mock()
+    response = Mock(status_code=200)
     response.json.return_value = {'id': 'checkout-123'}
     with patch('gateways.services.requests.post', return_value=response) as post:
       checkout = DatafastClient().prepare_checkout(
-        Decimal(100), Decimal(100), Decimal(0), True, 'PAY-reserved-unique', synthetic_payer(), '198.51.100.42'
+        Decimal(100),
+        Decimal(100),
+        Decimal(0),
+        True,
+        'PAY-reserved-unique',
+        synthetic_payer(),
+        '198.51.100.42',
+        product_description='Recorded service',
       )
     self.assertEqual(checkout, 'checkout-123')
     payload = post.call_args.kwargs['data']

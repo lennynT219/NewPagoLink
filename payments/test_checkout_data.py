@@ -4,12 +4,14 @@ from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import Client, RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import CustomUser
+from gateways.services import DatafastClient
 from gateways.test_checkout_data import synthetic_payer
 from payments import services
 from payments.forms import CheckoutForm, LinkForm
@@ -195,6 +197,68 @@ class CheckoutPayerTests(TestCase):
       )
     self.assertEqual(response.status_code, 200)
     self.gateway.prepare_checkout.assert_called_once()
+
+  @override_settings(TAX_IVA=Decimal('0.12'), DATAFAST_CART_PRICE_BASIS='gross')
+  def test_per_link_tax_snapshots_reach_sdk_unchanged(self):
+    cases = (
+      (Link.TaxType.VAT_15, False, '100.00', '15.00', '115.00'),
+      (Link.TaxType.VAT_15, True, '86.96', '13.04', '100.00'),
+      (Link.TaxType.VAT_0, False, '100.00', '0.00', '100.00'),
+      (Link.TaxType.NO_VAT, True, '100.00', '0.00', '100.00'),
+    )
+    for tax_type, included, subtotal, igv, amount in cases:
+      link = services.create_payment_link(
+        self.seller,
+        {
+          'subtotal': '100.00',
+          'description': 'Actual service charge',
+          'tax_type': tax_type,
+          'include_igv': included,
+        },
+      )
+      link_before = Link.objects.filter(pk=link.pk).values().get()
+      payment = self.payment(
+        link=link, description=link.description, subtotal=link.subtotal, igv=link.igv, amount=link.amount
+      )
+      financial = ('amount', 'subtotal', 'igv', 'commission', 'description')
+      before = Payment.objects.filter(pk=payment.pk).values(*financial).get()
+      response = Mock(status_code=200)
+      response.json.return_value = {'id': f'synthetic-tax-{payment.pk}'}
+      with (
+        self.subTest(tax_type=tax_type, included=included),
+        patch('gateways.services.requests.post', return_value=response) as post,
+      ):
+        attempt = services.prepare_payment_checkout(payment.pk, DatafastClient(), {}, '198.51.100.42')
+      data = post.call_args.kwargs['data']
+      self.assertEqual(data['amount'], amount)
+      self.assertEqual(data['cart.items[0].price'], amount)
+      self.assertEqual(data['merchantTransactionId'], attempt.merchant_transaction_id)
+      self.assertEqual(attempt.amount, Decimal(amount))
+      self.assertEqual(data['customParameters[SHOPPER_VAL_BASEIMP]'], subtotal if Decimal(igv) else '0.00')
+      self.assertEqual(data['customParameters[SHOPPER_VAL_BASE0]'], '0.00' if Decimal(igv) else subtotal)
+      self.assertEqual(data['customParameters[SHOPPER_VAL_IVA]'], igv)
+      self.assertEqual(Payment.objects.filter(pk=payment.pk).values(*financial).get(), before)
+      self.assertEqual(Link.objects.filter(pk=link.pk).values().get(), link_before)
+      self.assertEqual(settings.TAX_IVA, Decimal('0.12'))
+
+  def test_actual_locked_description_forwarded_without_link_rewrite(self):
+    payment = self.payment(description='Actual recorded charge')
+    before = Payment.objects.filter(pk=payment.pk).values('description', 'amount', 'subtotal', 'igv').get()
+    services.prepare_payment_checkout(payment.pk, self.gateway, {}, '198.51.100.42')
+    self.assertEqual(self.gateway.prepare_checkout.call_args.kwargs['product_description'], before['description'])
+    self.assertEqual(Payment.objects.filter(pk=payment.pk).values(*before).get(), before)
+    self.link.refresh_from_db()
+    self.assertEqual(self.link.description, 'Synthetic purchase')
+
+  def test_invalid_cart_before_attempt_reservation(self):
+    for description in ('', ' ', 'A&B', 'x' * 256):
+      payment = self.payment(description=description)
+      before = Payment.objects.filter(pk=payment.pk).values().get()
+      with self.subTest(description=description), self.assertRaises(ValueError):
+        services.prepare_payment_checkout(payment.pk, self.gateway, {}, '198.51.100.42')
+      self.assertFalse(PaymentAttempt.objects.filter(payment=payment).exists())
+      self.assertEqual(Payment.objects.filter(pk=payment.pk).values().get(), before)
+    self.gateway.prepare_checkout.assert_not_called()
 
   def test_invalid_payer_before_service_reservation_each_field(self):
     for key in payer_input():

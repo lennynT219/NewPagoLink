@@ -128,7 +128,7 @@ def email_settings(strict, debug):
   address = parseaddr(sender)[1]
   if strict and (not re.fullmatch(r'[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+', address) or '\n' in sender or '\r' in sender):
     invalid('DEFAULT_FROM_EMAIL')
-  result = {'EMAIL_BACKEND_MODE': mode, 'DEFAULT_FROM_EMAIL': sender}
+  result: dict[str, str | int | bool | dict[str, str]] = {'EMAIL_BACKEND_MODE': mode, 'DEFAULT_FROM_EMAIL': sender}
   if mode == 'console':
     result['EMAIL_BACKEND'] = 'django.core.mail.backends.console.EmailBackend'
   elif mode == 'resend':
@@ -181,6 +181,19 @@ def secure_profile(secret, debug):
   }
 
 
+def validate_checkout_metadata(eci, pserv, merchant_name, price_basis):
+  """Shared startup/checkout gate; identifiers are opaque provider-confirmed text."""
+  for value in (eci, pserv, merchant_name, price_basis):
+    if not isinstance(value, str) or not value.strip() or not value.isprintable():
+      raise ValueError('Configuración de checkout incompleta o inválida.')
+  if (
+    len(merchant_name) > 30
+    or not all(char.isalnum() or char == ' ' for char in merchant_name)
+    or price_basis not in ('net', 'gross')
+  ):
+    raise ValueError('Configuración de checkout incompleta o inválida.')
+
+
 def validate_datafast(strict, base_url, test_mode):
   if not strict:
     return
@@ -191,4 +204,15 @@ def validate_datafast(strict, base_url, test_mode):
   if test_mode not in (None, ''):
     invalid('DATAFAST_TEST_MODE')
   for key in ('DATAFAST_ENTITY_ID', 'DATAFAST_AUTH_TOKEN', 'DATAFAST_MID', 'DATAFAST_TID'):
-    required(key)
+    value = required(key)
+    if not value.isprintable():
+      invalid(key)
+  for key, sample in (('DATAFAST_MID', '1000000406'), ('DATAFAST_TID', 'PD100406')):
+    if required(key).strip() == sample:
+      invalid(key)
+  keys = ('DATAFAST_ECI', 'DATAFAST_PSERV', 'DATAFAST_MERCHANT_NAME', 'DATAFAST_CART_PRICE_BASIS')
+  values = [required(key) for key in keys]
+  try:
+    validate_checkout_metadata(*values)
+  except ValueError:
+    invalid('DATAFAST checkout metadata')

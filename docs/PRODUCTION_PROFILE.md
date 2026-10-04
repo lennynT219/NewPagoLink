@@ -1,6 +1,6 @@
 # Compile a safe production profile
 
-Use exported configuration, PostgreSQL TLS and an explicit mail provider before deploying. Passing repository checks is **not** infrastructure readiness or DATAFAST certification. Checkout/customer/tax alignment and production payload test-mode omission remain T5b; live certification remains required.
+Use exported configuration, PostgreSQL TLS and an explicit mail provider before deploying. Passing repository checks is **not** infrastructure readiness or DATAFAST certification. T5b checkout/customer/tax alignment and production test-mode omission are locally implemented; provider acceptance and live certification remain required.
 
 This is the canonical replacement for older deployment/email notes. Existing untracked `DEPLOYMENT.md`, `EMAIL_CONFIGURATION.md`, Resend notes and DigitalOcean instructions may describe obsolete `DB_NAME` settings, manual settings edits or ad-hoc Gunicorn installs. They are not updated by this work.
 
@@ -27,10 +27,13 @@ All values here are placeholders, **not deployable credentials**. `DJANGO_ENV` a
 | `DATAFAST_BASE_URL` | `https://eu-prod.oppwa.com` (root, optionally trailing `/`); no `/v1/`, userinfo, foreign host, query or fragment |
 | `DATAFAST_ENTITY_ID`, `DATAFAST_AUTH_TOKEN`, `DATAFAST_MID`, `DATAFAST_TID` | Operator-provided merchant credentials; no production defaults |
 | `DATAFAST_TEST_MODE` | Omit it entirely (empty accepted); `EXTERNAL` and `INTERNAL` fail startup |
+| `DATAFAST_ECI`, `DATAFAST_PSERV` | Explicit provider-confirmed printable identifiers; no samples or defaults supplied |
+| `DATAFAST_MERCHANT_NAME` | Registered, provider-approved alphanumeric/spaces short name, 1–30 characters; not UI branding |
+| `DATAFAST_CART_PRICE_BASIS` | Explicit `net` or `gross`, no default; operator must obtain provider confirmation/certification |
 
 ### Fake exported-profile example
 
-The canonical example lives in this Markdown guide rather than a separate environment-example file. This shell-format block shows the complete SMTP profile; do not deploy the fake credentials or source private files during repository checks.
+The canonical example lives in this Markdown guide rather than a separate environment-example file. This shell-format block shows the SMTP profile with checkout metadata deliberately left for operator confirmation; do not deploy the fake credentials or source private files during repository checks.
 
 ```sh
 export DJANGO_ENV=production
@@ -52,6 +55,11 @@ export DATAFAST_ENTITY_ID=FAKE_ENTITY
 export DATAFAST_AUTH_TOKEN=FAKE_TOKEN
 export DATAFAST_MID=FAKE_MID
 export DATAFAST_TID=FAKE_TID
+# This example is intentionally incomplete until the operator supplies:
+# DATAFAST_ECI, DATAFAST_PSERV: provider-confirmed identifiers
+# DATAFAST_MERCHANT_NAME: registered, approved short name
+# DATAFAST_CART_PRICE_BASIS: net or gross only after provider confirmation
+# No example/default merchant metadata values are supplied.
 # Omit DATAFAST_TEST_MODE; remove any inherited test-mode value.
 unset DATAFAST_TEST_MODE
 export TRUST_CONTROLLED_PROXY=False
@@ -65,7 +73,7 @@ export SECURE_HSTS_PRELOAD=False
 
 The fake defaults deliberately retain progressive HSTS warnings until an operator verifies HTTPS. SMTP versus Resend is an explicit deployment choice, not a provider guessed by startup.
 
-The strict DATAFAST allowlist deliberately uses the existing canonical EU production host. DATAFAST also documents `test.oppwa.com` / `oppwa.com`, but alias acceptance is not expanded here because T1's sandbox policy and T5b payload policy must remain aligned. Development retains fake credentials and explicit `EXTERNAL` with `https://eu-test.oppwa.com`. No tax-policy change is made here.
+The strict DATAFAST allowlist deliberately uses the existing canonical EU production host. DATAFAST also documents `test.oppwa.com` / `oppwa.com`, but alias acceptance is not expanded here because T1's sandbox policy and T5b payload policy must remain aligned. Development may use explicit synthetic test credentials and `EXTERNAL` with `https://eu-test.oppwa.com`. The four new checkout metadata variables default to empty even in development; missing/invalid values block checkout POST. Strict profiles require them explicitly and reject control characters. Production MID/TID must differ from the manual's phase-2 test samples. ECI/PSERV are configured provider-confirmed identifiers, not a 3DS ECI or an assertion of distinct per-merchant allocation. Cart net/gross price basis is unresolved in the manual and remains a provider acceptance/certification gate. No tax-policy change is made here; see [the payload contract](DATAFAST_CHECKOUT.md#tax-merchant-and-aggregate-cart-contract).
 
 ### PostgreSQL and TLS
 
@@ -102,7 +110,7 @@ Django may emit W004/W005/W021 during a deliberate staged rollout. Do not silenc
 
 ## Isolated repository verification
 
-`pagolink/test_production_settings.py` supplies only fake exported variables and blocks `socket.connect`, `connect_ex` and `create_connection` **before Django imports**. It instantiates the installed PostgreSQL/psycopg backend, confirms `connection.connection is None`, tests SMTP and Resend compilation and runs deployment security checks. It does not replace the production database with SQLite. Legacy `.env` bootstrap is tested with the environment reader mocked, never the actual secret file.
+`pagolink/test_production_settings.py` supplies only fake exported variables and blocks `socket.connect`, `connect_ex` and `create_connection` and both `psycopg.connect` / `psycopg.Connection.connect` **before Django/settings imports**. It asserts zero driver calls and instantiates the installed PostgreSQL/psycopg backend, confirms `connection.connection is None`, tests SMTP and Resend compilation and runs deployment security checks. It does not replace the production database with SQLite. Legacy `.env` bootstrap is tested with the environment reader mocked, never the actual secret file.
 
 For focused functional regressions, the parent-authorized wrapper sets explicit development variables, replaces the database with in-memory SQLite and email with locmem, and blocks all sockets. Schema consistency uses `makemigrations --check --dry-run --skip-checks` under that same isolated wrapper, not real migrations.
 
@@ -132,15 +140,23 @@ The repeated locked-production export still contains 35 requirement entries; 34 
 
 The earlier setup attempt with `--no-build` failed because existing `standardwebhooks` has no wheel; retrying without that flag succeeded before this follow-up. The follow-up did not repeat that failed attempt or install a Python runtime. After these four security updates, observed blocked-network checks exited 0: seven profile tests passed separately, all 282 focused regressions passed, schema consistency reported no changes, and fake production `check --deploy --fail-level WARNING` reported zero issues with the installed PostgreSQL backend and `connection=None`. Development regression tests used in-memory SQLite and locmem; production startup did not override PostgreSQL. Independent candidate verification remains parent-owned.
 
+## Operational handoff
+
+Use the [production readiness runbook](PRODUCTION_READINESS.md) as the release checklist: bounded reconciliation/unknown-outcome handling, isolated backup restoration, schema-compatible rollback and explicit staging/certification evidence. Its external gates are **UNVERIFIED**, not satisfied by fake-profile compilation. The user's browser/functional checks and the coordinator's consolidated closing verification remain separate pending evidence.
+
+Strict staging retains the production DATAFAST endpoint allowlist and forbids testMode; do not assume setting `DJANGO_ENV=staging` makes provider calls safe. Provider-approved sandbox work and real infrastructure exercises need separate authorization. No service installation, scheduling or deployment is performed by this documentation.
+
 ## External release gates
 
 - [x] Apply the four explicitly approved security updates and repeat the locked-production audit (34 packages, zero findings).
-- [ ] Independently verify the frozen T5a candidate and rerun the audit at release time.
-- [ ] Complete T5b checkout/customer/tax policy and production payload test-mode omission.
+- [x] Independently verify the frozen T5a/security candidate (recorded in task history).
+- [ ] Rerun the locked-production audit at release time; complete consolidated T5b2/T6 closing verification.
+- [x] Implement local T5b checkout/customer/stored-tax payload alignment and production test-mode omission.
+- [ ] Confirm configured merchant identifiers/name, aggregate-cart price basis and guest payer reference semantics with DATAFAST; obtain provider acceptance/certification.
 - [ ] Verify real PostgreSQL contention, TLS/CA/hostname and least-privilege database permissions.
 - [ ] Verify actual proxy ingress/header overwrite, HTTPS certificates, cookies and browser returns.
 - [ ] Verify chosen mail provider/domain and delivery in authorized staging.
-- [ ] Verify backup/restore, rollback, static serving, monitoring and scheduling in T6.
+- [ ] Execute the documented backup/restore, rollback, static serving, monitoring and scheduling exercises with operator authorization; T6 documentation alone does not verify them.
 - [ ] Obtain DATAFAST representative fixtures and live merchant certification.
 
 No database connections, provider/refund calls, mail sends, infrastructure installation or deployment are authorized by these repository checks.

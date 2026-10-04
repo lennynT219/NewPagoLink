@@ -26,6 +26,10 @@ FAKE_PRODUCTION = {
   'DATAFAST_AUTH_TOKEN': 'fake-token',
   'DATAFAST_MID': 'fake-mid',
   'DATAFAST_TID': 'fake-tid',
+  'DATAFAST_ECI': 'fixture-eci',
+  'DATAFAST_PSERV': 'fixture-pserv',
+  'DATAFAST_MERCHANT_NAME': 'FixtureMerchant',
+  'DATAFAST_CART_PRICE_BASIS': 'gross',
   'SECURE_HSTS_SECONDS': '31536000',
   'SECURE_HSTS_INCLUDE_SUBDOMAINS': 'True',
   'SECURE_HSTS_PRELOAD': 'True',
@@ -34,7 +38,7 @@ FAKE_PRODUCTION = {
 SCRIPT = r"""
 import json, socket
 from unittest.mock import patch
-with patch('socket.socket.connect', side_effect=RuntimeError('Network blocked')), patch('socket.socket.connect_ex', side_effect=RuntimeError('Network blocked')), patch('socket.create_connection', side_effect=RuntimeError('Network blocked')):
+with patch('socket.socket.connect', side_effect=RuntimeError('Network blocked')), patch('socket.socket.connect_ex', side_effect=RuntimeError('Network blocked')), patch('socket.create_connection', side_effect=RuntimeError('Network blocked')), patch('psycopg.connect', side_effect=RuntimeError('Database blocked')) as driver, patch('psycopg.Connection.connect', side_effect=RuntimeError('Database blocked')) as connection_driver:
     import environ
     with patch.object(environ.Env, 'read_env') as env_reader:
         import django
@@ -52,6 +56,8 @@ with patch('socket.socket.connect', side_effect=RuntimeError('Network blocked'))
         'password': connection.settings_dict.get('PASSWORD'),
         'options': connection.settings_dict.get('OPTIONS'),
         'connection_none': connection.connection is None,
+        'driver_calls': driver.call_count + connection_driver.call_count,
+        'checkout_metadata': [settings.DATAFAST_ECI, settings.DATAFAST_PSERV, settings.DATAFAST_MERCHANT_NAME, settings.DATAFAST_CART_PRICE_BASIS],
         'backend': settings.EMAIL_BACKEND,
         'debug': settings.DEBUG,
         'secure_cookie': settings.SESSION_COOKIE_SECURE and settings.CSRF_COOKIE_SECURE,
@@ -83,7 +89,9 @@ class ProductionSettingsTests(SimpleTestCase):
   def assert_valid(self, overrides=None, remove=()):
     result = profile_result(overrides, remove)
     self.assertEqual(result.returncode, 0, result.stderr)
-    return json.loads(result.stdout)
+    compiled = json.loads(result.stdout)
+    self.assertEqual(compiled['driver_calls'], 0)
+    return compiled
 
   def test_real_postgres_backend_compiles_without_connecting(self):
     result = self.assert_valid()
@@ -104,6 +112,7 @@ class ProductionSettingsTests(SimpleTestCase):
   def test_alternate_profiles_and_explicit_proxy(self):
     for overrides in (
       {'DJANGO_ENV': 'staging'},
+      {'DATAFAST_CART_PRICE_BASIS': 'net'},
       {'TRUST_CONTROLLED_PROXY': 'True'},
       {'EMAIL_BACKEND_MODE': 'resend', 'RESEND_API_KEY': 'fake-key'},
       {'EMAIL_USE_TLS': 'False', 'EMAIL_USE_SSL': 'True', 'EMAIL_PORT': '465'},
@@ -133,6 +142,13 @@ class ProductionSettingsTests(SimpleTestCase):
     )
     self.assertEqual(result['engine'], 'django.db.backends.sqlite3')
     self.assertIn('console', result['backend'])
+
+  def test_development_metadata_defaults_empty_not_invented(self):
+    result = self.assert_valid(
+      {'DJANGO_ENV': 'development', 'DEBUG': 'True', 'EMAIL_BACKEND_MODE': 'console'},
+      remove=('DATAFAST_ECI', 'DATAFAST_PSERV', 'DATAFAST_MERCHANT_NAME', 'DATAFAST_CART_PRICE_BASIS'),
+    )
+    self.assertEqual(result['checkout_metadata'], ['', '', '', ''])
 
   def test_legacy_env_bootstrap_without_reading_private_file(self):
     result = self.assert_valid({'DEBUG': 'True', 'EMAIL_BACKEND_MODE': 'console'}, remove=('DJANGO_ENV',))
@@ -173,6 +189,12 @@ class ProductionSettingsTests(SimpleTestCase):
         'https://eu-prod.oppwa.com:444',
       ],
       'DATAFAST_TEST_MODE': ['EXTERNAL', 'INTERNAL'],
+      'DATAFAST_ECI': ['', ' ', 'bad\nvalue'],
+      'DATAFAST_PSERV': ['', 'bad\rvalue'],
+      'DATAFAST_MERCHANT_NAME': ['', 'x' * 31, 'Merchant&Co'],
+      'DATAFAST_CART_PRICE_BASIS': ['', 'other'],
+      'DATAFAST_MID': ['1000000406'],
+      'DATAFAST_TID': ['PD100406'],
       'TRUST_CONTROLLED_PROXY': ['perhaps'],
       'SECURE_HSTS_SECONDS': ['-1', 'bad'],
     }
@@ -201,6 +223,10 @@ class ProductionSettingsTests(SimpleTestCase):
       'DATAFAST_MID',
       'DATAFAST_TID',
       'DATAFAST_BASE_URL',
+      'DATAFAST_ECI',
+      'DATAFAST_PSERV',
+      'DATAFAST_MERCHANT_NAME',
+      'DATAFAST_CART_PRICE_BASIS',
     ):
       with self.subTest(key=key):
         result = profile_result(remove=(key,))

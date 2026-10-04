@@ -29,7 +29,14 @@ def synthetic_payer() -> dict[str, Any]:
 class CheckoutDataTests(SimpleTestCase):
   def prepare(self, payer, ip: Any = '198.51.100.42'):
     return DatafastClient().prepare_checkout(
-      Decimal(115), Decimal(100), Decimal(15), False, 'PAY-synthetic-unique', payer, ip
+      Decimal(115),
+      Decimal(100),
+      Decimal(15),
+      False,
+      'PAY-synthetic-unique',
+      payer,
+      ip,
+      product_description='Recorded service',
     )
 
   def test_missing_mandatory_payer_fields_never_post(self):
@@ -42,7 +49,7 @@ class CheckoutDataTests(SimpleTestCase):
         post.assert_not_called()
 
   def test_exact_actual_payer_fields_forwarded(self):
-    response = Mock()
+    response = Mock(status_code=200)
     response.json.return_value = {'id': 'synthetic-checkout'}
     with patch('gateways.services.requests.post', return_value=response) as post:
       self.assertEqual(self.prepare(synthetic_payer()), 'synthetic-checkout')
@@ -95,7 +102,7 @@ class CheckoutDataTests(SimpleTestCase):
     for raw, normalized in [('ABC123', '0000ABC123'), ('1234567890', '1234567890')]:
       data = synthetic_payer()
       data['identify'] = raw
-      response = Mock()
+      response = Mock(status_code=200)
       response.json.return_value = {'id': 'synthetic-checkout'}
       with patch('gateways.services.requests.post', return_value=response) as post:
         self.prepare(data)
@@ -116,7 +123,7 @@ class CheckoutDataTests(SimpleTestCase):
       data = synthetic_payer()
       data['billing_country'] = country
       data['shipping_country'] = country
-      response = Mock()
+      response = Mock(status_code=200)
       response.json.return_value = {'id': 'synthetic-checkout'}
       with self.subTest(country=country), patch('gateways.services.requests.post', return_value=response) as post:
         self.prepare(data)

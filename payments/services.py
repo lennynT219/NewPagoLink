@@ -17,7 +17,7 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 
 from accounts.models import CustomUser
-from gateways.services import PAYER_LIMITS, validate_checkout_payer, validate_client_ip
+from gateways.services import PAYER_LIMITS, validate_checkout_cart, validate_checkout_payer, validate_client_ip
 from payments.models import Link, Payment, PaymentAttempt, Refund, Sale
 from shared.email_service import send_html_email
 
@@ -190,6 +190,7 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
     # Only a new provider preparation requires complete payer data. Legacy
     # callbacks and reuse of an already prepared attempt do not revalidate it.
     validate_checkout_payer(customer, client_ip)
+    validate_checkout_cart(payment.amount, payment.subtotal, payment.igv, payment.description)
     if current:
       _record_attempt(current, 'EXPIRED', 'checkout_window_elapsed')
     for key in PAYER_LIMITS:
@@ -211,6 +212,7 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
       transaction_id=attempt.merchant_transaction_id,
       customer_data=customer,
       client_ip=client_ip,
+      product_description=payment.description,
     )
   except Exception:  # noqa: BLE001 -- Unknown provider errors remain unresolved; never blindly retry.
     checkout_id = None

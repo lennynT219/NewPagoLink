@@ -303,6 +303,7 @@ class PaymentIntegrityTests(TestCase):
 
   def test_fee_boundary_credits_zero_net_and_does_not_cap_tariff(self):
     self.payment.amount = Decimal('0.35')
+    self.payment.subtotal = Decimal('0.35')  # Untaxed fixture must preserve subtotal + IVA = gross.
     self.payment.save()
     attempt = self.attempt()
     services.process_payment_result(self.payment.pk, self.result(attempt, amount='0.35'))
