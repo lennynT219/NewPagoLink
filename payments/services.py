@@ -20,6 +20,8 @@ from accounts.models import CustomUser
 from gateways.services import (
   PAYER_LIMITS,
   DatafastClient,
+  active_datafast_environment,
+  attempt_environment_matches,
   validate_checkout_cart,
   validate_checkout_payer,
   validate_client_ip,
@@ -169,6 +171,9 @@ def checkout_client_ip(request):
 
 def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
   """Persist reservation before I/O; concurrent retries reuse the open attempt."""
+  environment = active_datafast_environment()
+  if isinstance(gateway, DatafastClient):
+    gateway.validate_configuration()
   with transaction.atomic():
     payment = Payment.objects.select_for_update().get(pk=payment_id)
     if _settled(payment):
@@ -191,6 +196,8 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
     current = attempts.filter(state__in=OPEN_ATTEMPT_STATES).first()
     # Start no earlier than the response, not the pre-I/O reservation.
     # Later observations conservatively extend the local no-retry window.
+    if current and not attempt_environment_matches(current):
+      raise ValueError('El intento pertenece a otro entorno Datafast. Contacte a soporte.')
     if current and current.updated_at > timezone.now() - timedelta(minutes=30):
       return current
     # Only a new provider preparation requires complete payer data. Legacy
@@ -208,7 +215,7 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
     payment.amount_client = payment.amount
     payment.status = Payment.PaymentStatus.PENDING
     payment.save()
-    attempt = PaymentAttempt.objects.create(payment=payment, amount=payment.amount)
+    attempt = PaymentAttempt.objects.create(payment=payment, amount=payment.amount, environment=environment)
     _record_attempt(attempt, 'CREATING', 'checkout_reserved')
 
   # A timeout may have created a remote checkout; do not blindly retry it.
@@ -246,6 +253,8 @@ def prepare_payment_checkout(payment_id, gateway, customer_data, client_ip):
 
 
 def _valid_result(payment, attempt, data):
+  if not attempt_environment_matches(attempt):
+    return False
   if not isinstance(data, dict) or not isinstance(data.get('result'), dict):
     return False
   provider_id = data.get('id')
@@ -254,7 +263,7 @@ def _valid_result(payment, attempt, data):
     not isinstance(provider_id, str)
     or not provider_id.strip()
     or provider_id != provider_id.strip()
-    or len(provider_id) > 255
+    or not re.fullmatch(r'[A-Za-z0-9_-][A-Za-z0-9_.-]{0,254}', provider_id)
     or not isinstance(code, str)
     or not re.fullmatch(r'\d{3}\.\d{3}\.\d{3}', code)
   ):
@@ -271,7 +280,10 @@ def _valid_result(payment, attempt, data):
     return False
   return (
     attempt.checkout_id is not None
-    and data.get('merchantTransactionId') == attempt.merchant_transaction_id
+    and (
+      data.get('merchantTransactionId') == attempt.merchant_transaction_id
+      or (attempt.environment == 'phase1' and 'merchantTransactionId' not in data)
+    )
     and amount == attempt.amount == payment.amount
     and amount >= SELLER_FEE
     and data.get('currency') == attempt.currency == 'USD'
@@ -308,9 +320,10 @@ def process_payment_result(payment_id: int, result_data: Any, attempt_id=None) -
       _record_attempt(attempt, 'UNKNOWN', 'invalid_or_unavailable_result')
     return payment
   code = result_data['result']['code']
-  success_codes = {'000.000.000'}
-  # Test connector responses are never approvals on the production endpoint.
-  if settings.DATAFAST_TEST_MODE and urlsplit(settings.DATAFAST_BASE_URL).hostname == 'eu-test.oppwa.com':
+  mode = active_datafast_environment()
+  success_codes = {'000.100.110'} if mode == 'phase1' else {'000.000.000'}
+  # Mode/profile/host were checked above; Phase 1 never borrows Phase 2 approvals.
+  if mode == 'phase2':
     success_codes.update({'000.100.110', '000.100.112'})
   try:
     # Constraints are the final race guard across different payment row locks.
@@ -419,6 +432,8 @@ def request_refund(seller: CustomUser, payment: Payment, description: str) -> Re
     raise ValueError('No tiene permisos sobre este pago.')
   if payment.status != Payment.PaymentStatus.PAID:
     raise ValueError('Solo se pueden reembolsar pagos confirmados.')
+  if not _refund_environment_valid(payment):
+    raise ValueError('El entorno del pago no admite este reembolso.')
   if hasattr(payment, 'refund'):
     raise ValueError('Este pago ya tiene una solicitud de reembolso.')
 
@@ -434,11 +449,35 @@ def _lock_refund(refund_id):
   return payment, refund
 
 
+def _refund_environment_valid(payment):
+  """Preserve legacy RF eligibility without overriding a conflicting creation pin."""
+  try:
+    client = DatafastClient()
+    client.validate_configuration()
+  except (ValueError, TypeError):
+    return False
+  if client.environment not in ('phase2', 'production'):
+    return False
+  # Baseline PAID refunds did not require an attempt. Blank migration defaults
+  # retain that compatibility, not an inferred/backfilled creation environment.
+  # Inspect every nonblank pin: an unrelated blank row cannot hide a conflict,
+  # including the attempt bound to payment.transaction_id.
+  return (
+    not PaymentAttempt.objects.filter(payment=payment)
+    .exclude(environment='')
+    .exclude(
+      environment=client.environment,
+    )
+    .exists()
+  )
+
+
 def _refund_binding_valid(payment, refund):
   from gateways.services import DatafastClient
 
   return (
     payment.status == Payment.PaymentStatus.PAID
+    and _refund_environment_valid(payment)
     and payment.seller_id is not None
     and payment.seller_id == refund.seller_id
     and refund.amount == payment.amount
@@ -530,6 +569,11 @@ def approve_refund_logic(refund_id: int, admin_user: Any, gateway=None) -> Refun
   """Commit gross reservation, send one RF outside locks, then settle separately."""
   from gateways.services import DatafastClient
 
+  client = gateway or DatafastClient()
+  if isinstance(client, DatafastClient):
+    client.validate_configuration()
+    if client.environment == 'phase1':
+      raise ValueError('Phase 1 no admite reembolsos.')
   # An outer transaction would hide the hold from payouts during provider I/O.
   if connection.in_atomic_block or not connection.get_autocommit():
     raise ValueError('El reembolso requiere una transacción independiente.')
@@ -551,7 +595,7 @@ def approve_refund_logic(refund_id: int, admin_user: Any, gateway=None) -> Refun
     _record_refund(refund, 'PROCESSING', '', 'gross_reserved')
 
   try:
-    result = (gateway or DatafastClient()).refund_payment(refund.original_transaction_id, refund.amount)
+    result = client.refund_payment(refund.original_transaction_id, refund.amount)
   except Exception:  # noqa: BLE001 -- Unknown provider errors remain unresolved, retaining refund holds.
     # Exception text/payloads may contain credentials. Never persist or show them.
     result = {'outcome': 'UNKNOWN'}

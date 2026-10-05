@@ -193,6 +193,29 @@ def validate_checkout_metadata(eci, pserv, merchant_name, price_basis):
     raise ValueError('Configuración de DATAFAST_CART_PRICE_BASIS inválida. Contacte a soporte.')
 
 
+DATAFAST_ROOTS = {
+  'phase1': 'https://test.oppwa.com/v1/',
+  'phase2': 'https://eu-test.oppwa.com/v1/',
+  'production': 'https://eu-prod.oppwa.com/v1/',
+}
+
+
+def datafast_environment(mode, profile, strict, debug):
+  """One selector; it never upgrades a development profile into production."""
+  if mode is None:
+    mode = 'production' if strict else 'phase2'
+  if mode not in DATAFAST_ROOTS or profile not in ('development', 'staging', 'production'):
+    raise ValueError('Configuración de DATAFAST_ENVIRONMENT inválida.')
+  if strict != (profile in ('staging', 'production')):
+    raise ValueError('Configuración de DATAFAST_ENVIRONMENT incompatible con el perfil.')
+  if mode == 'production':
+    if not strict or debug:
+      raise ValueError('DATAFAST_ENVIRONMENT=production requiere un perfil estricto sin DEBUG.')
+  elif strict or profile != 'development' or (mode == 'phase1' and not debug):
+    raise ValueError('Configuración de DATAFAST_ENVIRONMENT incompatible con el perfil.')
+  return mode
+
+
 def validate_datafast(strict, base_url, test_mode):
   if not strict:
     return

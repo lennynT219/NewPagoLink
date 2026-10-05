@@ -113,6 +113,45 @@ class CheckoutFeedbackTests(TestCase):
     payment.refresh_from_db()
     self.assertFalse(payment.buyer_client_ip)
 
+  @override_settings(
+    DATAFAST_ENVIRONMENT='phase1',
+    DJANGO_ENV='development',
+    STRICT_PROFILE=False,
+    DEBUG=True,
+    DATAFAST_ALLOW_LOCALHOST=True,
+    DATAFAST_BASE_URL='https://test.oppwa.com/v1/',
+    DATAFAST_TEST_MODE='',
+    DATAFAST_PHASE1_ENTITY_ID='fake-phase1-entity',
+    DATAFAST_PHASE1_AUTH_TOKEN='fake-phase1-token',
+    DATAFAST_MID='',
+    DATAFAST_TID='',
+    DATAFAST_ECI='',
+    DATAFAST_PSERV='',
+    DATAFAST_MERCHANT_NAME='',
+    DATAFAST_CART_PRICE_BASIS='',
+  )
+  def test_phase1_widget_minimum_payload_and_actual_ip_snapshot(self):
+    with patch('gateways.services.requests.post') as post:
+      post.return_value.status_code = 200
+      post.return_value.json.return_value = {'id': 'fixture-phase1-widget'}
+      response = self.client.post(self.url, payer_input(), REMOTE_ADDR='127.0.0.1')
+    self.assertEqual(response.context['step'], 'payment')
+    payment = response.context['payment']
+    self.assertEqual(payment.buyer_client_ip, '127.0.0.1')
+    self.assertEqual(PaymentAttempt.objects.get(payment=payment).environment, 'phase1')
+    self.assertContains(response, 'https://test.oppwa.com/v1/paymentWidgets.js?checkoutId=fixture-phase1-widget')
+    self.assertEqual(
+      post.call_args.kwargs['data'],
+      {
+        'entityId': 'fake-phase1-entity',
+        'amount': '115.00',
+        'currency': 'USD',
+        'paymentType': 'DB',
+      },
+    )
+    for value in ('fake-phase1-entity', 'fake-phase1-token'):
+      self.assertNotContains(response, value)
+
   def test_widget_url_variants_preserve_checkout_and_payment_binding(self):
     for suffix in ('', '/', '/v1', '/v1/'):
       with (

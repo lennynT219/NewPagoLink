@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 import requests
 from django.conf import settings
 
-from pagolink.production import validate_checkout_metadata
+from pagolink.production import DATAFAST_ROOTS, datafast_environment, validate_checkout_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +331,10 @@ def localhost_checkout_allowed(base_url, test_mode):
   if not settings.DATAFAST_ALLOW_LOCALHOST or not settings.DEBUG or settings.STRICT_PROFILE:
     return False
   try:
-    return checkout_base_url(base_url) == 'https://eu-test.oppwa.com/v1/' and test_mode == 'EXTERNAL'
+    mode = active_datafast_environment()
+    return checkout_base_url(base_url) == DATAFAST_ROOTS[mode] and (
+      (mode == 'phase1' and not test_mode) or (mode == 'phase2' and test_mode == 'EXTERNAL')
+    )
   except (ValueError, TypeError):
     return False
 
@@ -359,8 +362,9 @@ def validate_client_ip(value, *, base_url=None, test_mode=None, use_settings=Tru
     if not localhost_checkout_allowed(base_url, test_mode):
       raise ValueError(
         'No se pudo verificar la dirección IP del pagador. '
-        'Localhost requiere DATAFAST_ALLOW_LOCALHOST=True, DEBUG=True y sandbox '
-        'https://eu-test.oppwa.com con DATAFAST_TEST_MODE=EXTERNAL, solo en desarrollo. '
+        'Localhost requiere DATAFAST_ALLOW_LOCALHOST=True, DEBUG=True y el entorno de prueba seleccionado: '
+        'Phase 1 en https://test.oppwa.com sin testMode o Phase 2 en https://eu-test.oppwa.com '
+        'con DATAFAST_TEST_MODE=EXTERNAL, solo en desarrollo. '
         'Contacte a soporte; no cambie ni invente la IP.'
       )
   return str(address)
@@ -439,24 +443,59 @@ def checkout_base_url(value):
   return f'https://{base.netloc}/v1/'
 
 
+def active_datafast_environment():
+  mode = datafast_environment(
+    getattr(settings, 'DATAFAST_ENVIRONMENT', None),
+    settings.DJANGO_ENV,
+    settings.STRICT_PROFILE,
+    settings.DEBUG,
+  )
+  if settings.STRICT_PROFILE and settings.DATAFAST_ALLOW_LOCALHOST:
+    raise ValueError('DATAFAST_ALLOW_LOCALHOST no se admite en perfiles estrictos.')
+  if checkout_base_url(settings.DATAFAST_BASE_URL) != DATAFAST_ROOTS[mode]:
+    raise ValueError('Configuración de DATAFAST_BASE_URL incompatible con DATAFAST_ENVIRONMENT.')
+  if (mode == 'phase2' and settings.DATAFAST_TEST_MODE != 'EXTERNAL') or (
+    mode != 'phase2' and settings.DATAFAST_TEST_MODE not in (None, '')
+  ):
+    raise ValueError('Configuración de DATAFAST_TEST_MODE incompatible con DATAFAST_ENVIRONMENT.')
+  if mode == 'phase1':
+    entity = getattr(settings, 'DATAFAST_PHASE1_ENTITY_ID', '')
+    if not isinstance(entity, str) or not entity.strip() or not entity.isprintable():
+      raise ValueError('Configuración de DATAFAST_PHASE1_ENTITY_ID inválida.')
+    checkout_authorization(getattr(settings, 'DATAFAST_PHASE1_AUTH_TOKEN', ''))
+  return mode
+
+
+def attempt_environment_matches(attempt):
+  """Legacy attempts retain full binding, but can never become Phase 1."""
+  try:
+    mode = active_datafast_environment()
+    return attempt.environment == mode or (attempt.environment == '' and mode in ('phase2', 'production'))
+  except (ValueError, TypeError):
+    return False
+
+
 def validate_checkout_configuration(base_url, test_mode, auth_token):
-  """Pure preflight: fail before reserving an attempt or making provider I/O."""
-  base = urlsplit(checkout_base_url(base_url))
-  if test_mode and (test_mode != 'EXTERNAL' or base.netloc != 'eu-test.oppwa.com'):
+  """Pure preflight, including actual SDK overrides, before reservation or I/O."""
+  mode = active_datafast_environment()
+  if checkout_base_url(base_url) != DATAFAST_ROOTS[mode]:
+    raise ValueError('Configuración de DATAFAST_BASE_URL incompatible con DATAFAST_ENVIRONMENT.')
+  if (mode == 'phase2' and test_mode != 'EXTERNAL') or (mode != 'phase2' and test_mode not in (None, '')):
     raise ValueError('Configuración de DATAFAST_TEST_MODE inválida. Contacte a soporte.')
   checkout_authorization(auth_token)
-  validate_checkout_metadata(
-    settings.DATAFAST_ECI,
-    settings.DATAFAST_PSERV,
-    settings.DATAFAST_MERCHANT_NAME,
-    settings.DATAFAST_CART_PRICE_BASIS,
-  )
+  if mode != 'phase1':
+    validate_checkout_metadata(
+      settings.DATAFAST_ECI,
+      settings.DATAFAST_PSERV,
+      settings.DATAFAST_MERCHANT_NAME,
+      settings.DATAFAST_CART_PRICE_BASIS,
+    )
 
 
 class DatafastClient:
   """
-  Cliente técnico para la integración con Datafast (Ecuador) - Fase 2.
-  Implementa el desglose de impuestos y parámetros de seguridad obligatorios.
+  Cliente técnico para el contrato Datafast seleccionado.
+  Phase 2/producción mantienen el desglose y los parámetros obligatorios.
   """
 
   def __init__(self):
@@ -466,9 +505,19 @@ class DatafastClient:
     self.mid = settings.DATAFAST_MID
     self.tid = settings.DATAFAST_TID
     self.test_mode = settings.DATAFAST_TEST_MODE
+    self.environment = active_datafast_environment()
+    if self.environment == 'phase1':
+      self.entity_id = settings.DATAFAST_PHASE1_ENTITY_ID
+      self.auth_token = settings.DATAFAST_PHASE1_AUTH_TOKEN
 
   def validate_configuration(self):
     validate_checkout_configuration(self.base_url, self.test_mode, self.auth_token)
+    if self.environment != active_datafast_environment():
+      raise ValueError('El entorno del cliente Datafast ha cambiado.')
+    if self.environment == 'phase1' and (
+      self.entity_id != settings.DATAFAST_PHASE1_ENTITY_ID or self.auth_token != settings.DATAFAST_PHASE1_AUTH_TOKEN
+    ):
+      raise ValueError('Configuración de credenciales Phase 1 incompatible.')
 
   def _get_headers(self) -> dict[str, str]:
     return {'Authorization': self.auth_token, 'Content-Type': 'application/x-www-form-urlencoded'}
@@ -553,7 +602,9 @@ class DatafastClient:
       'risk.parameters[USER_DATA2]': settings.DATAFAST_MERCHANT_NAME,
     }
 
-    if self.test_mode == 'EXTERNAL':
+    if self.environment == 'phase1':
+      payload = {key: payload[key] for key in ('entityId', 'amount', 'currency', 'paymentType')}
+    elif self.test_mode == 'EXTERNAL':
       payload['testMode'] = self.test_mode
 
     try:
@@ -578,11 +629,14 @@ class DatafastClient:
       r'/v1/checkouts/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,254}/payment', resource_path
     ):
       raise ValueError('Invalid checkout result path')
-    base = urlsplit(self.base_url)
+    self.validate_configuration()
+    base = urlsplit(checkout_base_url(self.base_url))
     url = f'{base.scheme}://{base.netloc}{resource_path}'
     params = {'entityId': self.entity_id}
     try:
-      response = requests.get(url, params=params, headers=self._get_headers(), timeout=10, allow_redirects=False)
+      headers = self._get_headers()
+      headers['Authorization'] = checkout_authorization(self.auth_token)
+      response = requests.get(url, params=params, headers=headers, timeout=10, allow_redirects=False)
       response.raise_for_status()
       if response.status_code != 200:
         return {'outcome': 'UNKNOWN'}
@@ -623,6 +677,7 @@ class DatafastClient:
   def _query(self, path: str, params: dict[str, str]) -> dict[str, Any]:
     unknown = {'outcome': 'UNKNOWN'}
     try:
+      self.validate_configuration()
       base = urlsplit(self.base_url)
       if (
         base.scheme != 'https'
@@ -699,6 +754,9 @@ class DatafastClient:
     Invalid local parameters raise ValueError before I/O. This adapter has no
     accounting side effects; the caller owns reservation and finalization.
     """
+    self.validate_configuration()
+    if self.environment == 'phase1':
+      raise ValueError('Phase 1 no admite reembolsos.')
     if not self._refund_id_is_safe(transaction_id):
       raise ValueError('Invalid refund transaction ID')
     if not self._refund_amount_is_valid(amount):

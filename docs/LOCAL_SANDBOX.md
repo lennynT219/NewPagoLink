@@ -1,59 +1,56 @@
-# Run the local app against DATAFAST sandbox
+# Select the DATAFAST environment safely
 
-Use the existing approved **sandbox** credentials unchanged. Localhost support is an explicit development-only opt-in, not an offline simulator or proof that DATAFAST accepts localhost. Agents have not read credentials or contacted the provider.
+`DATAFAST_ENVIRONMENT` accepts exactly `phase1`, `phase2`, or `production`. It selects the provider contract, not the application security profile. No agent has read credentials, migrated the real database, or contacted DATAFAST.
 
-## Quick path (operator only)
+## Choose a mode
 
-1. Confirm the account/credentials are sandbox credentials with DATAFAST. Approval alone does not establish this. Keep secrets out of screenshots, HTML and source control.
-2. Ensure the existing local configuration has the required metadata below. Do not invent payer identity, merchant name, IP or a certified cart price basis.
-3. From the repository root, start the local UI with the existing virtualenv:
+| Selector | Application profile | Provider root and contract |
+|---|---|---|
+| `phase1` | `DJANGO_ENV=development`, `DEBUG=True`, non-strict | `https://test.oppwa.com/v1/`; basic integrator checkout; no `testMode` |
+| `phase2` | Development, non-strict | `https://eu-test.oppwa.com/v1/`; `DATAFAST_TEST_MODE=EXTERNAL`; full payer/cart/tax/merchant metadata |
+| `production` | Strict staging/production, `DEBUG=False` | `https://eu-prod.oppwa.com/v1/`; full metadata; no `testMode`, no localhost flag |
 
-   ```bash
-   env -u DJANGO_ENV DEBUG=True EMAIL_BACKEND_MODE=console \
-     DATAFAST_ALLOW_LOCALHOST=True \
-     DATAFAST_BASE_URL=https://eu-test.oppwa.com DATAFAST_TEST_MODE=EXTERNAL \
-     .venv/bin/python -B manage.py runserver 127.0.0.1:8000
-   ```
+**Absent selector:** development defaults to Phase 2; staging and production default to the production provider. Staging does not acquire a new Phase 2 bypass. Invalid selectors, profile/host mismatches and contradictory test modes fail before provider I/O. The selector alone cannot start production from development or relax secret, database, email, HTTPS or proxy gates.
 
-   This is an operator command, **not run by the agent**. It uses the existing local database and can initiate real sandbox requests when you submit checkout. Console mail avoids external email delivery; do not share console output containing payer data.
+Development supplies a mode-specific default root; Phase 2 supplies the default `EXTERNAL` test mode. Explicit contradictory configuration is rejected, not ignored. Strict profiles still require an explicit canonical root `https://eu-prod.oppwa.com` under their existing startup policy. Development root, root slash, `/v1` and `/v1/` variants produce the canonical API/widget root.
 
-   `env -u DJANGO_ENV` preserves the legacy `.env` bootstrap: explicitly exporting `DJANGO_ENV=development` would skip that file. The file must select development (or omit `DJANGO_ENV`); a staging/production profile rejects the localhost flag. Exported command values take precedence over `.env`; existing credentials are not replaced by this command. No file needs to be printed or shared.
-4. Open the local checkout. Use actual payer data; a public invitation GET deliberately leaves the form blank. Email/account readonly policy is unchanged. Submit only after confirming the sandbox account and amount.
+## Configure privately (operator only)
 
-> **HTTP is not certified:** `runserver` serves plain HTTP for local UI checks. The official manual requires the merchant site to use HTTPS/TLS 1.2 even in tests. Arrange an approved HTTPS local setup and confirm DATAFAST acceptance before claiming a functional payment test. Do not expose a DEBUG server publicly. The opt-in only changes the app's loopback rejection; it cannot guarantee provider acceptance.
-
-## Required configuration
+Export configuration without printing or committing secret values. With `DJANGO_ENV` explicitly exported, settings do not read `.env`. Omitting `DJANGO_ENV` preserves the existing legacy `.env` bootstrap; exported values take precedence. Do not modify private configuration through an agent or bypass its access/write guard.
 
 | Keys | Requirement |
 |---|---|
-| `SECRET_KEY` | Existing local application secret; never publish it. |
-| `DATAFAST_ENTITY_ID`, `DATAFAST_AUTH_TOKEN`, `DATAFAST_MID`, `DATAFAST_TID` | Existing provider-approved sandbox credentials; no placeholders or production credentials. |
-| `DATAFAST_ECI` | Explicit identifier. Official manual describes mandatory fixed `0103910`; verify applicability with DATAFAST. |
-| `DATAFAST_PSERV` | Explicit identifier. Official manual describes mandatory fixed `17913101`; verify applicability with DATAFAST. |
-| `DATAFAST_MERCHANT_NAME` | Explicit registered merchant identity (up to 30 alphanumeric/space characters), not a guessed UI brand. |
-| `DATAFAST_CART_PRICE_BASIS` | Explicit provider-confirmed `net` or `gross`. The manual does not resolve this choice; neither is automatically certified. |
+| `SECRET_KEY` | Existing application secret; all existing profile checks still apply. |
+| `DATAFAST_PHASE1_ENTITY_ID`, `DATAFAST_PHASE1_AUTH_TOKEN` | Required dedicated Phase 1 credentials. No public defaults or fallback to Phase 2 credentials. |
+| `DATAFAST_ENTITY_ID`, `DATAFAST_AUTH_TOKEN`, `DATAFAST_MID`, `DATAFAST_TID` | Required existing merchant-assigned credentials for Phase 2/production. Not required or read from the environment on the Phase 1 path. |
+| `DATAFAST_ECI`, `DATAFAST_PSERV` | Explicit provider-approved identifiers for Phase 2/production. |
+| `DATAFAST_MERCHANT_NAME` | Registered merchant identity, up to 30 alphanumeric/space characters. |
+| `DATAFAST_CART_PRICE_BASIS` | Provider-confirmed `net` or `gross`, not an inferred certification. |
 
-The root, root slash, `/v1` and `/v1/` sandbox base variants all produce `/v1/paymentWidgets.js`. The actual checkout ID and payment result binding are preserved.
+For Phase 1, set `DATAFAST_ENVIRONMENT=phase1`, `DJANGO_ENV=development`, `DEBUG=True`, `EMAIL_BACKEND_MODE=console`, and the two dedicated secrets. Unset an old Phase 2 base/test mode or supply the Phase 1 base with an empty test mode. For Phase 2, select `phase2`, its EU test root, `EXTERNAL`, and the existing complete merchant configuration. Never use production credentials for either test mode.
 
-For a small approved test, consider a **USD 1.00 no-IVA charge**, only if that tax treatment is appropriate: subtotal and total coincide, so net/gross prices coincide without deciding certification. The manual limits phase-two tests to **USD 50 or less**. This guide does not impose a new production amount cap or change tax/fee calculations.
+Phase 1 sends only `entityId`, exact charge `amount`, `currency=USD`, and `paymentType=DB`. It omits Phase 2 payer/cart/tax/merchant metadata. The app still requires real payer input, preserves blank public forms and stores the actual client IP; no identity or IP substitution is introduced. Phase 1 transactions do **not** reach the DATAFAST switch and do not certify Phase 2 processing.
 
-## Understand a rejection
+## Localhost and browser checks
 
-| Feedback | Action |
-|---|---|
-| Required/invalid field | Supply actual payer data. Native browser validation may stop submission before the server receives it. |
-| IP/localhost error | Check all opt-in gates below; do not substitute a public IP or trust arbitrary forwarded headers. |
-| Missing/invalid configuration key | Supply or correct that named key privately. Responses show key names, never secret values. No checkout attempt is reserved for preflight failures. |
-| Unconfirmed attempt | Do not blindly resubmit; follow existing reconciliation/support instructions. |
+`DATAFAST_ALLOW_LOCALHOST=True` permits actual loopback only with `DEBUG=True`, non-strict development and the selected canonical test contract: Phase 1 at `test.oppwa.com` without test mode, or Phase 2 at `eu-test.oppwa.com` with `EXTERNAL`. Actual SDK overrides are checked too. Unspecified, multicast and link-local addresses remain forbidden; strict profiles reject localhost opt-in at startup.
 
-Loopback is permitted **only** when `DATAFAST_ALLOW_LOCALHOST=True`, `DEBUG=True`, non-strict development, canonical HTTPS `eu-test.oppwa.com` (no alternate port/host), and `EXTERNAL` mode all hold. The SDK also checks its actual client configuration, not just global settings. IPv4, IPv6 and IPv4-mapped loopback retain their actual address. Unspecified, multicast and link-local addresses remain rejected. Staging/production startup rejects the enabled flag, and strict SDK validation still rejects loopback.
+- [ ] Use the selected host's `/v1/paymentWidgets.js` and the exact created checkout ID.
+- [ ] Confirm the public form reveals no saved payer data and displays clear validation errors.
+- [ ] With opt-in off, local POST rejects loopback without a provider call.
+- [ ] Supply actual payer information; do not invent merchant metadata or a public IP.
+- [ ] Confirm provider-approved HTTPS/TLS 1.2 even for tests. Plain HTTP `runserver` is not certification; do not disable TLS verification or expose DEBUG publicly.
 
-## Browser checklist
+The manual limits Phase 2 tests to USD 50 or less; this change does not introduce a production amount cap. Tax calculations and the USD 0.35 seller fee remain unchanged.
 
-- [ ] Blank public GET reveals no saved payer data.
-- [ ] Missing/invalid inputs have understandable native validation or a prominent linked server error summary.
-- [ ] With opt-in off, local POST displays IP rejection and never calls the provider.
-- [ ] With all gates on, the widget script uses `/v1/paymentWidgets.js` and the correct checkout ID.
-- [ ] Confirm HTTPS, sandbox account, provider acceptance and final reconciliation separately; none were verified by mocked tests.
+## Attempt binding and refunds
 
-Reference: [official DATAFAST manual](https://developers.datafast.com.ec/Index.aspx). Remove the local opt-in before any staging/production setup; production readiness remains a separate work unit.
+New attempts persist an independent `PaymentAttempt.environment` creation snapshot. Changing today's selector cannot reuse, query or apply results to another mode's attempt. Mutable JSON history is not mode evidence. The migration leaves older attempts blank rather than guessing their origin.
+
+Only a newly Phase 1-bound attempt under active Phase 1 conditions can accept official `000.100.110` with absent `merchantTransactionId`. Callback checkout/path binding, safe provider ID uniqueness, exact amount, USD and DB are still required. A supplied mismatching (including null) merchant ID is rejected. Phase 2/production always require the original full merchant binding; production never approves test connector codes. Blank legacy attempts may retain that full-bound Phase 2/production result compatibility, but can never become Phase 1.
+
+**Phase 1 refunds are unsupported and fail before reservation/provider POST.** Under valid active Phase 2/production profile, host and authorization configuration, legacy PAID payments remain refund-eligible with blank attempt environments or no historical attempt, as before. No origin is inferred from JSON history or backfilled. Any nonblank conflicting payment-attempt environment denies RF; an unrelated blank attempt cannot override the original transaction's pin. Existing paid/ownership, exact amount/USD, original transaction/provider ID, outcome/result-code binding, gross holds, retained USD 0.35 fee, accounting, replay and idempotency rules remain required. Already-held legacy PROCESSING/UNKNOWN refunds may settle only validated bound CONFIRMED/DECLINED terminal observations, once and without another RF POST. Malformed, unbound or nonfinal responses retain the hold; UNKNOWN is never permission to retry or release money. This preserves compatibility, not production certification or reclassification of `800.100.100`.
+
+External functional checks remain operator-owned: verify HTTPS, approved credentials, separate Phase 2 test cards, provider acceptance and reconciliation. Mocked deterministic tests prove none of these external conditions.
+
+Reference: [official DATAFAST manual](https://developers.datafast.com.ec/Index.aspx#anexo_i_edited).

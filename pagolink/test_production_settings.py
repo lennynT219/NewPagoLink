@@ -58,6 +58,10 @@ with patch('socket.socket.connect', side_effect=RuntimeError('Network blocked'))
         'connection_none': connection.connection is None,
         'driver_calls': driver.call_count + connection_driver.call_count,
         'checkout_metadata': [settings.DATAFAST_ECI, settings.DATAFAST_PSERV, settings.DATAFAST_MERCHANT_NAME, settings.DATAFAST_CART_PRICE_BASIS],
+        'environment': getattr(settings, 'DATAFAST_ENVIRONMENT', None),
+        'base': settings.DATAFAST_BASE_URL,
+        'entity': settings.DATAFAST_ENTITY_ID,
+        'test_mode': settings.DATAFAST_TEST_MODE,
         'backend': settings.EMAIL_BACKEND,
         'debug': settings.DEBUG,
         'secure_cookie': settings.SESSION_COOKIE_SECURE and settings.CSRF_COOKIE_SECURE,
@@ -145,13 +149,21 @@ class ProductionSettingsTests(SimpleTestCase):
 
   def test_development_metadata_defaults_empty_not_invented(self):
     result = self.assert_valid(
-      {'DJANGO_ENV': 'development', 'DEBUG': 'True', 'EMAIL_BACKEND_MODE': 'console'},
+      {
+        'DJANGO_ENV': 'development',
+        'DEBUG': 'True',
+        'EMAIL_BACKEND_MODE': 'console',
+        'DATAFAST_BASE_URL': 'https://eu-test.oppwa.com',
+      },
       remove=('DATAFAST_ECI', 'DATAFAST_PSERV', 'DATAFAST_MERCHANT_NAME', 'DATAFAST_CART_PRICE_BASIS'),
     )
     self.assertEqual(result['checkout_metadata'], ['', '', '', ''])
 
   def test_legacy_env_bootstrap_without_reading_private_file(self):
-    result = self.assert_valid({'DEBUG': 'True', 'EMAIL_BACKEND_MODE': 'console'}, remove=('DJANGO_ENV',))
+    result = self.assert_valid(
+      {'DEBUG': 'True', 'EMAIL_BACKEND_MODE': 'console', 'DATAFAST_BASE_URL': 'https://eu-test.oppwa.com'},
+      remove=('DJANGO_ENV',),
+    )
     self.assertEqual(result['legacy_env_reads'], 1)
     self.assertEqual(result['engine'], 'django.db.backends.sqlite3')
 
@@ -219,6 +231,46 @@ class ProductionSettingsTests(SimpleTestCase):
     result = profile_result({'DATAFAST_ALLOW_LOCALHOST': 'perhaps'})
     self.assertNotEqual(result.returncode, 0)
     self.assertIn('DATAFAST_ALLOW_LOCALHOST', result.stderr)
+
+  def test_environment_defaults_and_explicit_modes(self):
+    self.assertEqual(self.assert_valid()['environment'], 'production')
+    development = {
+      'DJANGO_ENV': 'development',
+      'DEBUG': 'True',
+      'EMAIL_BACKEND_MODE': 'console',
+      'DATAFAST_BASE_URL': 'https://eu-test.oppwa.com',
+      'DATAFAST_TEST_MODE': 'EXTERNAL',
+    }
+    self.assertEqual(self.assert_valid(development)['environment'], 'phase2')
+    phase1 = dict(
+      development,
+      DATAFAST_ENVIRONMENT='phase1',
+      DATAFAST_BASE_URL='https://test.oppwa.com/v1/',
+      DATAFAST_TEST_MODE='',
+      DATAFAST_PHASE1_ENTITY_ID='fake-phase1',
+      DATAFAST_PHASE1_AUTH_TOKEN='fake-phase1-token',
+    )
+    result = self.assert_valid(
+      phase1, remove=('DATAFAST_ENTITY_ID', 'DATAFAST_AUTH_TOKEN', 'DATAFAST_MID', 'DATAFAST_TID')
+    )
+    self.assertEqual(result['environment'], 'phase1')
+    self.assertEqual(result['entity'], 'fake-phase1')
+    self.assertEqual(result['base'], 'https://test.oppwa.com/v1/')
+    for key in ('DATAFAST_PHASE1_ENTITY_ID', 'DATAFAST_PHASE1_AUTH_TOKEN'):
+      self.assertNotEqual(profile_result(phase1, remove=(key,)).returncode, 0)
+    for overrides in (
+      {'DATAFAST_ENVIRONMENT': ''},
+      {'DATAFAST_ENVIRONMENT': 'invalid'},
+      {'DATAFAST_ENVIRONMENT': 'phase1'},
+      {'DATAFAST_ENVIRONMENT': 'phase2'},
+      dict(development, DATAFAST_ENVIRONMENT='production'),
+      dict(phase1, DEBUG='False'),
+      dict(phase1, DATAFAST_TEST_MODE='EXTERNAL'),
+      dict(phase1, DATAFAST_BASE_URL='https://eu-test.oppwa.com'),
+      dict(phase1, DJANGO_ENV='staging'),
+    ):
+      with self.subTest(overrides=overrides):
+        self.assertNotEqual(profile_result(overrides).returncode, 0)
 
   def test_required_credentials_and_explicit_email(self):
     for key in (

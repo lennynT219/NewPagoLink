@@ -9,6 +9,10 @@ from gateways.test_checkout_data import synthetic_payer
 
 
 @override_settings(
+  DATAFAST_ENVIRONMENT='production',
+  DJANGO_ENV='production',
+  STRICT_PROFILE=True,
+  DEBUG=False,
   DATAFAST_BASE_URL='https://eu-prod.oppwa.com/v1/',
   DATAFAST_AUTH_TOKEN='mock-token',
   DATAFAST_ENTITY_ID='mock-entity',
@@ -52,7 +56,7 @@ class DatafastStatusTests(SimpleTestCase):
         True,
         'PAY-reserved-unique',
         synthetic_payer(),
-        '198.51.100.42',
+        '8.8.8.8',
         product_description='Recorded service',
       )
     self.assertEqual(checkout, 'checkout-123')

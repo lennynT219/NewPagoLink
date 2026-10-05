@@ -88,6 +88,13 @@ class PaymentAttempt(models.Model):
   provider_transaction_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
   amount = models.DecimalField(max_digits=10, decimal_places=2)
   currency = models.CharField(max_length=3, default='USD')
+  # Blank is a legacy attempt, never evidence of a Phase 1 creation.
+  environment = models.CharField(
+    max_length=10,
+    blank=True,
+    default='',
+    choices=[('phase1', 'Phase 1'), ('phase2', 'Phase 2'), ('production', 'Production')],
+  )
   state = models.CharField(max_length=12, choices=State.choices, default=State.CREATING)
   result_code = models.CharField(max_length=32, blank=True)
   history = models.JSONField(default=list)

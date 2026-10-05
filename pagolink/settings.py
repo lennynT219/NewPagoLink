@@ -1,10 +1,20 @@
 import os
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import environ
 
-from pagolink.production import boolean, email_settings, invalid, required, secure_profile, validate_datafast
+from pagolink.production import (
+  DATAFAST_ROOTS,
+  boolean,
+  datafast_environment,
+  email_settings,
+  invalid,
+  required,
+  secure_profile,
+  validate_datafast,
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -138,17 +148,46 @@ globals().update(email_settings(STRICT_PROFILE, DEBUG))
 if 'anymail' not in INSTALLED_APPS:
   INSTALLED_APPS.append('anymail')
 
-# Configuración Datafast
+# The selector does not change profile, secret, email, database or HTTPS gates.
+try:
+  DATAFAST_ENVIRONMENT = datafast_environment(os.environ.get('DATAFAST_ENVIRONMENT'), DJANGO_ENV, STRICT_PROFILE, DEBUG)
+except ValueError:
+  invalid('DATAFAST_ENVIRONMENT')
 DATAFAST_BASE_URL = (
   required('DATAFAST_BASE_URL')
   if STRICT_PROFILE
-  else os.environ.get('DATAFAST_BASE_URL', 'https://eu-test.oppwa.com/v1/')
+  else os.environ.get('DATAFAST_BASE_URL', DATAFAST_ROOTS[DATAFAST_ENVIRONMENT])
 )
-DATAFAST_ENTITY_ID = required('DATAFAST_ENTITY_ID')
-DATAFAST_AUTH_TOKEN = required('DATAFAST_AUTH_TOKEN')
-DATAFAST_MID = required('DATAFAST_MID')
-DATAFAST_TID = required('DATAFAST_TID')
-DATAFAST_TEST_MODE = os.environ.get('DATAFAST_TEST_MODE')
+# Explicit host contradictions are never silently redirected to another mode.
+_datafast_base = urlsplit(DATAFAST_BASE_URL)
+if (
+  _datafast_base.scheme != 'https'
+  or _datafast_base.netloc != urlsplit(DATAFAST_ROOTS[DATAFAST_ENVIRONMENT]).netloc
+  or _datafast_base.path not in ('', '/', '/v1', '/v1/')
+  or _datafast_base.query
+  or _datafast_base.fragment
+  or '?' in DATAFAST_BASE_URL
+  or '#' in DATAFAST_BASE_URL
+  or any(char.isspace() for char in DATAFAST_BASE_URL)
+):
+  invalid('DATAFAST_BASE_URL')
+DATAFAST_TEST_MODE = os.environ.get('DATAFAST_TEST_MODE', 'EXTERNAL' if DATAFAST_ENVIRONMENT == 'phase2' else '')
+if DATAFAST_ENVIRONMENT == 'phase2':
+  if DATAFAST_TEST_MODE != 'EXTERNAL':
+    invalid('DATAFAST_TEST_MODE')
+elif DATAFAST_TEST_MODE not in (None, ''):
+  invalid('DATAFAST_TEST_MODE')
+if DATAFAST_ENVIRONMENT == 'phase1':
+  DATAFAST_PHASE1_ENTITY_ID = required('DATAFAST_PHASE1_ENTITY_ID')
+  DATAFAST_PHASE1_AUTH_TOKEN = required('DATAFAST_PHASE1_AUTH_TOKEN')
+  DATAFAST_ENTITY_ID = DATAFAST_PHASE1_ENTITY_ID
+  DATAFAST_AUTH_TOKEN = DATAFAST_PHASE1_AUTH_TOKEN
+  DATAFAST_MID = DATAFAST_TID = ''
+else:
+  DATAFAST_ENTITY_ID = required('DATAFAST_ENTITY_ID')
+  DATAFAST_AUTH_TOKEN = required('DATAFAST_AUTH_TOKEN')
+  DATAFAST_MID = required('DATAFAST_MID')
+  DATAFAST_TID = required('DATAFAST_TID')
 DATAFAST_ECI = os.environ.get('DATAFAST_ECI', '')
 DATAFAST_PSERV = os.environ.get('DATAFAST_PSERV', '')
 DATAFAST_MERCHANT_NAME = os.environ.get('DATAFAST_MERCHANT_NAME', '')

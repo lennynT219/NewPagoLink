@@ -146,7 +146,7 @@ class LinkCheckoutView(View):
           'checkout_id': checkout_id,
           'payment': payment,
           'step': 'payment',
-          'widget_url': checkout_base_url(settings.DATAFAST_BASE_URL) + 'paymentWidgets.js',
+          'widget_url': checkout_base_url(gateway.base_url) + 'paymentWidgets.js',
         },
       )
     form.add_error(None, 'No se pudo confirmar el intento. No reenviar; contacte a soporte.')
@@ -184,8 +184,13 @@ class PaymentResultView(View):
     attempt = PaymentAttempt.objects.filter(payment_id=payment_id, checkout_id=checkout_id).first()
     if attempt is None or resource_path != attempt.resource_path:
       return HttpResponseBadRequest('Referencia de pago inválida.')
-    gateway = DatafastClient()
-    result_data = gateway.get_payment_status(resource_path)
+    if not services.attempt_environment_matches(attempt):
+      return HttpResponseBadRequest('El intento pertenece a otro entorno Datafast.')
+    try:
+      gateway = DatafastClient()
+      result_data = gateway.get_payment_status(resource_path)
+    except (ValueError, TypeError):
+      return HttpResponseBadRequest('Configuración Datafast inválida.')
     payment = services.process_payment_result(int(payment_id), result_data, attempt_id=attempt.pk)
     return render(
       request,
