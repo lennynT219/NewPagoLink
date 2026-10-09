@@ -135,6 +135,7 @@
     <div class="card-modern">
         <form method="post" novalidate>
             {% csrf_token %}
+            {{ form.non_field_errors }}
 
             <!-- Nombres + Apellidos -->
             <div class="field-row">
@@ -174,6 +175,31 @@
                     {% endif %}
                 </div>
             </div>
+
+            <section aria-labelledby="commerce-heading">
+                <h2 id="commerce-heading">Datos del comercio</h2>
+                <p>Declaraciones para el contrato, separadas de tus datos personales. Podés guardar un perfil incompleto; será necesario completarlo antes de aceptar el contrato.</p>
+                <p>El correo electrónico y el teléfono celular de tu cuenta se mantienen como datos de contacto, no como identidad del representante legal.</p>
+                <p>No se verifica la validez oficial del RUC ni de la cédula declarada.</p>
+                {% if missing_commerce_fields %}
+                    <p>Datos pendientes para el contrato:</p>
+                    <ul>
+                        {% for label in missing_commerce_fields %}<li>{{ label }}</li>{% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Los datos declarados del comercio están completos para preparar el contrato.</p>
+                {% endif %}
+                {% for field in form.commerce_fields %}
+                    <div class="field-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                        {% for error in field.errors %}
+                            <small style="color: var(--danger);">{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </section>
 
             <!-- Botones -->
             <div class="form-actions">

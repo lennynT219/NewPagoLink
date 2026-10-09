@@ -5,6 +5,8 @@ from pathlib import Path
 from django.conf import settings
 from django.test import TestCase
 
+from accounts.contract_terms import CONTRACT_TEXT
+
 
 def _read_template(app_name, template_path):
   """Read a template file from an app's templates directory."""
@@ -451,16 +453,17 @@ class DashboardContractTemplateTests(TestCase):
   # --- RED: Legal content preserved ---
 
   def test_contract_clausulas_preserved(self):
-    """CLÁUSULAS heading must be preserved."""
-    self.assertIn('CLÁUSULAS', self.content)
+    """The initial contract's sections come from canonical copy."""
+    self.assertIn('PRIMERA.- ANTECEDENTES', CONTRACT_TEXT)
+    self.assertIn('DÉCIMA SEGUNDA.- DISPOSICIONES GENERALES', CONTRACT_TEXT)
 
   def test_contract_adrest_preserved(self):
-    """ADREST company name must be preserved."""
-    self.assertIn('ADREST', self.content)
+    """The source provider identity remains in canonical copy."""
+    self.assertIn('ADREST DEL ECUADOR CÍA. LTDA.', CONTRACT_TEXT)
 
-  def test_contract_vendedor_preserved(self):
-    """VENDEDOR reference must be preserved."""
-    self.assertIn('VENDEDOR', self.content)
+  def test_contract_comercio_preserved(self):
+    """Use the initial source's party name, not the previous VENDEDOR copy."""
+    self.assertIn('EL COMERCIO', CONTRACT_TEXT)
 
   # --- RED: Removes AdminLTE classes ---
 
@@ -488,9 +491,10 @@ class DashboardContractTemplateTests(TestCase):
     self.assertIn('exclamation-triangle', self.content, 'Must have warning icon')
     self.assertIn('Atención', self.content, 'Must have attention heading')
 
-  def test_contract_tariff_table_uses_table_modern(self):
-    """Tariff table must use table-modern class."""
-    self.assertIn('table-modern', self.content, 'Tariff table must use table-modern')
+  def test_contract_uses_canonical_copy_without_old_tariff_table(self):
+    """Copy is looped once; the unsupported old tariff tiers are removed."""
+    self.assertIn('{% for kind, text in contract_blocks %}', self.content)
+    self.assertNotIn('<table', self.content)
 
   def test_contract_title_block_preserved(self):
     """Title block must be preserved."""

@@ -1,19 +1,21 @@
-from typing import Any, Dict, Optional
 import logging
+from typing import Any
 
 from django.contrib.auth.models import User
+from django.contrib.gis.geoip2 import GeoIP2
 from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse_lazy
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-from django.urls import reverse_lazy
-from django.contrib.gis.geoip2 import GeoIP2
+
+from accounts.contracts import has_current_acceptance
 from accounts.models import CustomUser
 from accounts.tokens import account_activation_token
 
 logger = logging.getLogger(__name__)
 
 
-def create_user(form_data: Dict[str, Any]) -> User:
+def create_user(form_data: dict[str, Any]) -> User:
   """Crea el User y el Custom User de forma atómica."""
   user = User.objects.create_user(
     username=form_data['email'],
@@ -50,11 +52,11 @@ def login_redirect_url(user: User) -> str:
   if user.is_staff:
     return reverse_lazy('admin:index')
   try:
-    seller = user.customuser # type: ignore
+    seller = user.customuser  # type: ignore
   except Exception:
     return reverse_lazy('dashboard:login')
 
-  if hasattr(seller, 'contract'):
+  if has_current_acceptance(seller):
     return reverse_lazy('dashboard:dashboard')
   return reverse_lazy('dashboard:contract')
 

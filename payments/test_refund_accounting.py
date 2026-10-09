@@ -8,7 +8,9 @@ from django.db import connection, transaction
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 
+from accounts.contracts import record_current_acceptance
 from accounts.models import Contract, CustomUser
+from accounts.test_personalized_contract import populate_declared_profile
 from banking.models import Bank, DisbursementRequest, PaymentMethod
 from banking.services import process_disbursement
 from payments import services
@@ -22,6 +24,8 @@ class RefundAccountingTests(TransactionTestCase):
     self.admin = User.objects.create_user(username='admin')
     CustomUser.objects.create(user=self.admin, identification=2, is_admin_role=True)
     Contract.objects.create(seller=self.seller, ip='127.0.0.1', city='Test')
+    populate_declared_profile(self.seller)
+    record_current_acceptance(self.seller, ip='127.0.0.1')
     self.payment = Payment.objects.create(
       seller=self.seller,
       subtotal=100,
@@ -70,7 +74,7 @@ class RefundAccountingTests(TransactionTestCase):
 
   def test_request_reloads_paid_state_and_checks_ownership(self):
     with self.assertRaises(ValueError):
-      services.request_refund(self.admin.customuser, self.payment, 'Foreign')
+      services.request_refund(CustomUser.objects.get(user=self.admin), self.payment, 'Foreign')
     other = Payment.objects.create(seller=self.seller, subtotal=10, amount=10, amount_client=10, status='PAID')
     Payment.objects.filter(pk=other.pk).update(status='REFUNDED')
     with self.assertRaises(ValueError):
@@ -240,17 +244,37 @@ class RefundAccountingTests(TransactionTestCase):
     self.gateway.refund_payment.return_value = {'outcome': 'UNKNOWN'}
     self.approve()
     result = self.result(code='000.100.112')
-    for base, mode in [
-      ('https://eu-prod.oppwa.com', 'EXTERNAL'),
-      ('https://eu-test.oppwa.com', ''),
-      ('https://eu-test.oppwa.com:443', 'EXTERNAL'),
+    for environment, base, mode in [
+      ('production', 'https://eu-prod.oppwa.com', 'EXTERNAL'),
+      ('production', 'https://eu-prod.oppwa.com', ''),
+      ('phase2', 'https://eu-test.oppwa.com', ''),
+      ('phase2', 'https://eu-test.oppwa.com:443', 'EXTERNAL'),
     ]:
-      with self.subTest(base=base, mode=mode), override_settings(DATAFAST_BASE_URL=base, DATAFAST_TEST_MODE=mode):
+      production = environment == 'production'
+      with (
+        self.subTest(environment=environment, base=base, mode=mode),
+        override_settings(
+          DATAFAST_ENVIRONMENT=environment,
+          DATAFAST_BASE_URL=base,
+          DATAFAST_TEST_MODE=mode,
+          DJANGO_ENV='production' if production else 'development',
+          STRICT_PROFILE=production,
+          DEBUG=not production,
+          DATAFAST_ALLOW_LOCALHOST=False,
+        ),
+      ):
         services.settle_refund(self.refund.pk, result)
         self.refresh()
         self.assertEqual(self.refund.status, 'UNKNOWN')
         self.assertEqual(self.refund.held_amount, 100)
-    with override_settings(DATAFAST_BASE_URL='https://eu-test.oppwa.com', DATAFAST_TEST_MODE='EXTERNAL'):
+    with override_settings(
+      DATAFAST_ENVIRONMENT='phase2',
+      DJANGO_ENV='development',
+      STRICT_PROFILE=False,
+      DEBUG=True,
+      DATAFAST_BASE_URL='https://eu-test.oppwa.com',
+      DATAFAST_TEST_MODE='EXTERNAL',
+    ):
       services.settle_refund(self.refund.pk, result)
     self.refresh()
     self.assertEqual(self.refund.status, 'APPROVED')
@@ -259,7 +283,11 @@ class RefundAccountingTests(TransactionTestCase):
   def test_changed_payment_binding_after_rf_keeps_hold(self):
     self.gateway.refund_payment.return_value = {'outcome': 'UNKNOWN'}
     self.approve()
-    for changes in [{'transaction_id': 'changed-original'}, {'amount': 99}, {'seller': self.admin.customuser}]:
+    for changes in [
+      {'transaction_id': 'changed-original'},
+      {'amount': 99},
+      {'seller': CustomUser.objects.get(user=self.admin)},
+    ]:
       with self.subTest(changes=changes):
         Payment.objects.filter(pk=self.payment.pk).update(**changes)
         services.settle_refund(self.refund.pk, self.result())
@@ -289,7 +317,7 @@ class RefundAccountingTests(TransactionTestCase):
     self.assertEqual(self.refund.status, 'PENDING')
 
   def test_invalid_binding_or_historic_refund_never_calls_provider(self):
-    variants = [{'amount': Decimal('99.65')}, {'seller': self.admin.customuser}]
+    variants = [{'amount': Decimal('99.65')}, {'seller': CustomUser.objects.get(user=self.admin)}]
     for changes in variants:
       with self.subTest(changes=changes):
         Refund.objects.filter(pk=self.refund.pk).update(**changes)
@@ -343,6 +371,28 @@ class RefundAccountingTests(TransactionTestCase):
     self.assertEqual(self.seller.available_balance, Decimal('99.65'))
     self.assertEqual(self.refund.held_amount, 0)
 
+  def test_legacy_only_seller_cannot_access_refund_routes(self):
+    user = User.objects.create_user(username='legacy-seller')
+    seller = CustomUser.objects.create(user=user, identification=3, available_balance=Decimal('10.00'))
+    Contract.objects.create(seller=seller, ip='127.0.0.1', city='Test')
+    payment = Payment.objects.create(seller=seller, subtotal=10, amount=10, amount_client=10, status='PAID', state=True)
+    self.client.force_login(user)
+    request_url = reverse('payments:refund_request', args=[payment.pk])
+    for method, url, data in [
+      ('get', reverse('payments:refund_list'), {}),
+      ('get', request_url, {}),
+      ('post', request_url, {'description': 'Blocked request'}),
+    ]:
+      with self.subTest(method=method, url=url):
+        response = getattr(self.client, method)(url, data)
+        self.assertRedirects(response, reverse('dashboard:contract'), fetch_redirect_response=False)
+    self.assertFalse(Refund.objects.filter(payment=payment).exists())
+    seller.refresh_from_db()
+    payment.refresh_from_db()
+    self.assertEqual(seller.available_balance, Decimal('10.00'))
+    self.assertEqual(payment.status, 'PAID')
+    self.assertTrue(payment.state)
+
   def test_seller_ui_shows_every_actual_status(self):
     self.client.force_login(self.user)
     for status, label in [
@@ -370,7 +420,9 @@ class RefundAccountingTests(TransactionTestCase):
     response = self.client.get(reverse('payments:refund_request', args=[self.payment.pk]))
     self.assertContains(response, 'Solicitud existente: Pendiente')
     self.assertContains(response, 'disabled')
-    foreign = Payment.objects.create(seller=self.admin.customuser, subtotal=1, amount=1, amount_client=1, status='PAID')
+    foreign = Payment.objects.create(
+      seller=CustomUser.objects.get(user=self.admin), subtotal=1, amount=1, amount_client=1, status='PAID'
+    )
     response = self.client.post(reverse('payments:refund_request', args=[foreign.pk]), {'description': 'Foreign'})
     self.assertEqual(response.status_code, 404)
     self.assertFalse(Refund.objects.filter(payment=foreign).exists())

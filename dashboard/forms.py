@@ -1,17 +1,42 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
 from django.forms import (
   CharField,
+  CheckboxInput,
   EmailField,
   EmailInput,
   Form,
+  HiddenInput,
   IntegerField,
   PasswordInput,
   TextInput,
   ValidationError,
 )
-from django.contrib.auth.models import User
+
+from accounts.contracts import has_current_acceptance
 from accounts.models import CustomUser
+
+
+class ContractAcceptanceForm(Form):
+  # CharField deliberately avoids BooleanField's permissive coercion.
+  consent = CharField(strip=False, widget=CheckboxInput(attrs={'value': 'accept'}))
+  version = CharField(strip=False, widget=HiddenInput)
+  text_hash = CharField(strip=False, widget=HiddenInput)
+  preview_token = CharField(strip=False, widget=HiddenInput)
+
+  def clean(self):
+    data = super().clean() or {}
+    if (
+      self.data.get('consent') != 'accept'
+      or not data.get('version')
+      or not data.get('text_hash')
+      or not data.get('preview_token')
+    ):
+      raise ValidationError(
+        'Debe aceptar explícitamente el contrato vigente. Revise los términos y vuelva a intentarlo.'
+      )
+    return data
 
 
 class RegisterForm(Form):
@@ -96,7 +121,7 @@ class LoginForms(Form):
   )
 
   def clean(self):
-    cleaned_data = super().clean()
+    cleaned_data = super().clean() or {}
     email = cleaned_data.get('email')
     password = cleaned_data.get('password')
 
@@ -112,7 +137,7 @@ class LoginForms(Form):
     # Verifica si el usuario tiene contrato
     try:
       seller = CustomUser.objects.get(user=user)
-      redirect_to = 'contract' if not getattr(seller, 'contract', None) else 'dashboard'
+      redirect_to = 'dashboard' if has_current_acceptance(seller) else 'contract'
     except CustomUser.DoesNotExist:
       raise ValidationError('El usuario no existe en el sistema.')
 

@@ -1,13 +1,17 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import UpdateView
-from django.urls import reverse_lazy
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
-from .forms import UserProfileForm
-from dashboard.mixins import ContractRequiredMixin
+from django.urls import reverse_lazy
+from django.views.generic import UpdateView
 
-class ProfileUpdateView(LoginRequiredMixin, ContractRequiredMixin, UpdateView):
-  """Vista para actualizar los datos del perfil del vendedor."""
+from accounts.merchant_profile import CONTRACT_PROFILE_FIELDS, missing_contract_profile_fields
+
+from .forms import UserProfileForm
+
+
+class ProfileUpdateView(LoginRequiredMixin, UpdateView):
+  """Owner-bound profile preparation remains available before acceptance."""
+
   model = User
   form_class = UserProfileForm
   template_name = 'accounts/profile_form.html'
@@ -16,6 +20,13 @@ class ProfileUpdateView(LoginRequiredMixin, ContractRequiredMixin, UpdateView):
   def get_object(self, queryset=None):
     return self.request.user
 
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    seller = getattr(self.request.user, 'customuser', None)
+    missing = missing_contract_profile_fields(seller)
+    context['missing_commerce_fields'] = tuple(CONTRACT_PROFILE_FIELDS[name] for name in missing)
+    return context
+
   def form_valid(self, form):
-    messages.success(self.request, "Tus datos han sido actualizados correctamente.")
+    messages.success(self.request, 'Tus datos han sido actualizados correctamente.')
     return super().form_valid(form)
