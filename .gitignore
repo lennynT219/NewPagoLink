@@ -14,13 +14,28 @@ __pycache__/
 *.pyd
 *.db
 *.sqlite3
+# Local database journal / WAL sidecars
+*.sqlite3-*
+*.db-*
 
-# Local environment settings
-.env
+# Local environment settings, including dotenv copies and backups
+.env*
 # Operator-filled environment variants (never commit)
 /env.fase1
 /env.fase2
 /env.production
+
+# Root-local backups, tool artifacts and task notes
+/.local-backups/
+/.codegraph/
+/.pi/
+/odd/
+/TODO.md
+
+# Private operator guide and binary documents pending review
+/docs/CONNECT_DIGITALOCEAN.md
+/docs/*.docx
+/docs/*.xlsx
 
 # Ignore the virtual environment
 venv/
