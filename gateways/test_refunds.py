@@ -9,12 +9,13 @@ from gateways.services import DatafastClient
 
 
 @override_settings(
-  DATAFAST_BASE_URL='https://eu-prod.oppwa.com/v1/',
+  DATAFAST_ENVIRONMENT='phase2',
+  DATAFAST_BASE_URL='https://eu-test.oppwa.com/v1/',
   DATAFAST_AUTH_TOKEN='test-token',
   DATAFAST_ENTITY_ID='test-entity',
   DATAFAST_MID='test-mid',
   DATAFAST_TID='test-tid',
-  DATAFAST_TEST_MODE='',
+  DATAFAST_TEST_MODE='EXTERNAL',
 )
 class DatafastRefundTests(SimpleTestCase):
   def approved(self):
@@ -50,11 +51,17 @@ class DatafastRefundTests(SimpleTestCase):
         'code': '000.000.000',
       },
     )
-    self.assertEqual(post.call_args.args, ('https://eu-prod.oppwa.com/v1/payments/original-123',))
+    self.assertEqual(post.call_args.args, ('https://eu-test.oppwa.com/v1/payments/original-123',))
     self.assertEqual(
       post.call_args.kwargs,
       {
-        'data': {'entityId': 'test-entity', 'amount': '10.00', 'currency': 'USD', 'paymentType': 'RF'},
+        'data': {
+          'entityId': 'test-entity',
+          'amount': '10.00',
+          'currency': 'USD',
+          'paymentType': 'RF',
+          'testMode': 'EXTERNAL',
+        },
         'headers': {'Authorization': 'Bearer test-token', 'Content-Type': 'application/x-www-form-urlencoded'},
         'timeout': 10,
         'allow_redirects': False,
@@ -145,20 +152,40 @@ class DatafastRefundTests(SimpleTestCase):
         self.assertEqual(post.call_args.kwargs['data']['amount'], '10.00')
 
   def test_test_mode_is_gated_by_exact_sandbox_host_and_explicit_config(self):
-    cases = [
-      ('https://eu-test.oppwa.com/v1/', 'EXTERNAL', True),
-      ('https://eu-test.oppwa.com', '', False),
-      ('https://eu-test.oppwa.com/v1/', 'external', False),
-      ('https://eu-prod.oppwa.com/v1/', 'EXTERNAL', False),
-      ('https://eu-test.oppwa.com.evil.invalid/v1/', 'EXTERNAL', False),
-    ]
-    for base, mode, enabled in cases:
-      with self.subTest(base=base, mode=mode), override_settings(DATAFAST_BASE_URL=base, DATAFAST_TEST_MODE=mode):
-        data = self.approved()
-        data['result']['code'] = '000.100.112'
-        result, _, post = self.invoke(data)
-        self.assertEqual(result['outcome'], 'CONFIRMED' if enabled else 'UNKNOWN')
-        self.assertEqual('testMode' in post.call_args.kwargs['data'], enabled)
+    data = self.approved()
+    data['result']['code'] = '000.100.112'
+    result, _, post = self.invoke(data)
+    self.assertEqual(result['outcome'], 'CONFIRMED')
+    self.assertEqual(post.call_args.kwargs['data']['testMode'], 'EXTERNAL')
+    with override_settings(
+      DATAFAST_ENVIRONMENT='production',
+      DJANGO_ENV='production',
+      STRICT_PROFILE=True,
+      DEBUG=False,
+      DATAFAST_ALLOW_LOCALHOST=False,
+      DATAFAST_BASE_URL='https://eu-prod.oppwa.com/v1/',
+      DATAFAST_TEST_MODE='',
+    ):
+      result, _, post = self.invoke(data)
+      self.assertEqual(result['outcome'], 'UNKNOWN')
+      self.assertNotIn('testMode', post.call_args.kwargs['data'])
+      with override_settings(DATAFAST_TEST_MODE='EXTERNAL'), patch('gateways.services.requests.post') as post:
+        with self.assertRaises(ValueError):
+          DatafastClient().refund_payment('original-123', Decimal('10.00'))
+        post.assert_not_called()
+    for base, mode in [
+      ('https://eu-test.oppwa.com', ''),
+      ('https://eu-test.oppwa.com/v1/', 'external'),
+      ('https://eu-test.oppwa.com.evil.invalid/v1/', 'EXTERNAL'),
+    ]:
+      with (
+        self.subTest(base=base, mode=mode),
+        override_settings(DATAFAST_BASE_URL=base, DATAFAST_TEST_MODE=mode),
+        patch('gateways.services.requests.post') as post,
+      ):
+        with self.assertRaises(ValueError):
+          DatafastClient().refund_payment('original-123', Decimal('10.00'))
+        post.assert_not_called()
 
   def test_existing_bearer_prefix_is_not_duplicated(self):
     with override_settings(DATAFAST_AUTH_TOKEN='Bearer test-token'):

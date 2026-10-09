@@ -10,6 +10,7 @@ from gateways.test_checkout_data import synthetic_payer
 
 
 @override_settings(
+  DATAFAST_ENVIRONMENT='phase2',
   DATAFAST_ECI='configured-eci',
   DATAFAST_PSERV='configured-pserv',
   DATAFAST_MERCHANT_NAME='ApprovedMerchant',
@@ -26,7 +27,7 @@ class CheckoutTaxTests(SimpleTestCase):
       kwargs.pop('include_igv', False),
       'PAY-reserved-unique',
       synthetic_payer(),
-      '198.51.100.42',
+      kwargs.pop('client_ip', '198.51.100.42'),
       product_description=kwargs.pop('description', 'Recorded service'),
     )
 
@@ -134,15 +135,20 @@ class CheckoutTaxTests(SimpleTestCase):
         post.assert_not_called()
 
   def test_production_omits_test_mode_and_rejects_external(self):
-    with override_settings(DATAFAST_BASE_URL='https://eu-prod.oppwa.com/v1/', DATAFAST_TEST_MODE=''):
-      self.assertNotIn('testMode', self.payload()['data'])
-    with (
-      override_settings(DATAFAST_BASE_URL='https://eu-prod.oppwa.com/v1/'),
-      patch('gateways.services.requests.post') as post,
+    with override_settings(
+      DATAFAST_ENVIRONMENT='production',
+      DJANGO_ENV='production',
+      STRICT_PROFILE=True,
+      DEBUG=False,
+      DATAFAST_ALLOW_LOCALHOST=False,
+      DATAFAST_BASE_URL='https://eu-prod.oppwa.com/v1/',
+      DATAFAST_TEST_MODE='',
     ):
-      with self.assertRaises(ValueError):
-        self.prepare()
-      post.assert_not_called()
+      self.assertNotIn('testMode', self.payload(client_ip='8.8.8.8')['data'])
+      with override_settings(DATAFAST_TEST_MODE='EXTERNAL'), patch('gateways.services.requests.post') as post:
+        with self.assertRaises(ValueError):
+          self.prepare(client_ip='8.8.8.8')
+        post.assert_not_called()
 
   def test_root_profile_posts_to_checkout_endpoint(self):
     with override_settings(DATAFAST_BASE_URL='https://eu-test.oppwa.com'):

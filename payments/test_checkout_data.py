@@ -50,6 +50,9 @@ class CheckoutFormTests(SimpleTestCase):
     self.assertTrue(form.is_valid(), form.errors)
 
 
+@override_settings(
+  DATAFAST_ENVIRONMENT='phase2', DATAFAST_BASE_URL='https://eu-test.oppwa.com/v1/', DATAFAST_TEST_MODE='EXTERNAL'
+)
 class CheckoutPayerTests(TestCase):
   def setUp(self):
     self.seller = CustomUser.objects.create(
@@ -60,7 +63,7 @@ class CheckoutPayerTests(TestCase):
       seller=self.seller, description='Synthetic purchase', subtotal=100, igv=15, amount=115, include_igv=False
     )
     self.url = reverse('payments:link_checkout', kwargs={'pk': self.link.pk})
-    self.gateway = Mock()
+    self.gateway = Mock(base_url='https://eu-test.oppwa.com/v1/', test_mode='EXTERNAL')
     self.gateway.prepare_checkout.return_value = 'synthetic-checkout'
 
   def payment(self, **overrides):

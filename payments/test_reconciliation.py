@@ -17,7 +17,9 @@ from payments.models import Link, Payment, PaymentAttempt, Refund, Sale
 from payments.services import process_payment_result
 
 
-@override_settings(DATAFAST_BASE_URL='https://eu-prod.oppwa.com/v1/', DATAFAST_TEST_MODE='')
+@override_settings(
+  DATAFAST_ENVIRONMENT='phase2', DATAFAST_BASE_URL='https://eu-test.oppwa.com/v1/', DATAFAST_TEST_MODE='EXTERNAL'
+)
 class ReconciliationTests(TransactionTestCase):
   def setUp(self):
     self.seller = CustomUser.objects.create(user=User.objects.create_user('seller'), identification=1234567890)
