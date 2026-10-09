@@ -11,6 +11,7 @@ from pagolink.production import (
   datafast_environment,
   email_settings,
   invalid,
+  postgres_database,
   required,
   secure_profile,
   validate_datafast,
@@ -96,6 +97,8 @@ DATABASES = {
     'NAME': BASE_DIR / 'db.sqlite3',
   }
 }
+if not STRICT_PROFILE and os.environ.get('DATABASE_URL', '') != '':
+  DATABASES = {'default': postgres_database(local_development=True)}
 
 
 # Password validation

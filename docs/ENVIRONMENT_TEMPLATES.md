@@ -12,7 +12,24 @@ The generated root files `env.fase1`, `env.fase2`, and `env.production` are nons
 
 Fill private values **once in the chosen variant**, replacing every `REPLACE_` marker. Keep credential sets separate: never mix Phase 1, Phase 2 and production keys. Clear conflicting inherited process variables; exported values take precedence over dotenv values.
 
-Local profiles use automatic SQLite and console email; the reserved `example.invalid` sender is harmless, not a verified delivery domain. No SMTP secrets or obsolete database variables are needed. `TAX_IVA=0.12` preserves the existing default. For the local USD 1 / no-IVA pilot, configure the **link's tax as zero**, not the global tax setting. Phase 2 `gross` is only that pilot's local choice, not a generally certified policy. Known ECI `0103910`, PSERV `17913101` and prior public merchant name `ADREST` must be confirmed with DATAFAST and replaced if assigned differently. Production requires an explicit provider-confirmed `net` or `gross` choice.
+Local profiles default to SQLite and console email; the reserved `example.invalid` sender is harmless, not a verified delivery domain. No SMTP secrets or obsolete database variables are needed. `TAX_IVA=0.12` preserves the existing default. For the local USD 1 / no-IVA pilot, configure the **link's tax as zero**, not the global tax setting. Phase 2 `gross` is only that pilot's local choice, not a generally certified policy. Known ECI `0103910`, PSERV `17913101` and prior public merchant name `ADREST` must be confirmed with DATAFAST and replaced if assigned differently. Production requires an explicit provider-confirmed `net` or `gross` choice.
+
+## Optional local PostgreSQL (development only)
+
+Leave `DATABASE_URL` absent or empty to keep the existing SQLite database. A nonempty URL in `DJANGO_ENV=development` opts into PostgreSQL; an invalid or remote URL fails settings compilation instead of silently falling back to SQLite. This database choice does not select DATAFAST mode or change credential origins.
+
+If you choose this later, privately configure a local database and role named `pagolink`, then add a URL to your chosen local variant. This is a **fake, human-only configuration example**, not an activation command:
+
+```dotenv
+DATABASE_URL=postgresql://pagolink:REPLACE_PASSWORD@localhost:5432/pagolink?sslmode=disable
+```
+
+- URL-escape username and password characters such as `@`, `:`, `/`, `?`, `#` and `%` within their own components (for example, a password's `@` becomes `%40`). Database names may not contain `/`, even when escaped as `%2F`. Never paste the completed URL into logs, chat or commits.
+- Only `localhost` and literal loopback IPv4/IPv6 destinations are accepted. `localhost` is pinned to `127.0.0.1` without DNS resolution; use `[::1]` explicitly for IPv6. Multi-host, Unix socket, service and destination-changing query options are rejected.
+- Clear nonempty inherited `PG*` libpq variables before choosing local PostgreSQL; settings rejects them without changing the process environment. Only `sslmode` and `sslrootcert` URL options are accepted; the effective loopback address is pinned internally.
+- TLS defaults to `disable` **only for this development-loopback path**; explicit `require`, `verify-ca` or `verify-full` remain available, with a CA path required for verification modes. Staging and production still require explicit strict TLS and all existing secret, DEBUG, email, HTTPS and DATAFAST gates.
+
+No database, role, private environment file or service is created or modified by this feature. There is **no automatic SQLite migration or data transfer**. Schema preparation and any deliberate data migration are separate operator work; settings-only tests do not verify connection, TLS, privileges or schema readiness.
 
 ## Activate manually (operator only)
 

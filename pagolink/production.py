@@ -73,7 +73,22 @@ def https_root(value, key):
     invalid(key)
 
 
-def postgres_database():
+def loopback_address(host):
+  """Return a literal destination without consulting DNS, sockets or libpq."""
+  if host == 'localhost':
+    return '127.0.0.1'
+  try:
+    address = ipaddress.ip_address(host)
+  except ValueError:
+    invalid('DATABASE_URL')
+  # Scoped IPv6 identifiers are not plain loopback literals.
+  if not address.is_loopback or '%' in host:
+    invalid('DATABASE_URL')
+  return str(address)
+
+
+def postgres_database(*, local_development=False):
+  """Share URL validation; only the explicit local path permits disabled TLS."""
   key = 'DATABASE_URL'
   value = required(key)
   try:
@@ -81,6 +96,16 @@ def postgres_database():
     # Allow only explicit libpq TLS configuration, never arbitrary connection options.
     pairs = parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=True)
     options = dict(pairs)
+    duplicate_options = len(options) != len(pairs)
+    if local_development:
+      # Reject inherited libpq configuration rather than mutate process state.
+      # This also excludes service/passfile/options and future PG* overrides.
+      if any(key.startswith('PG') and value for key, value in os.environ.items()):
+        invalid(key)
+      options.setdefault('sslmode', 'disable')
+    tls_modes = ('require', 'verify-ca', 'verify-full')
+    if local_development:
+      tls_modes += ('disable',)
     name = unquote(parsed.path[1:])
     decoded_fields = [name, unquote(parsed.username or ''), unquote(parsed.password or '')]
     if (
@@ -95,14 +120,18 @@ def postgres_database():
       or '/' in name
       or parsed.fragment
       or any(char.isspace() for char in value)
-      or len(options) != len(pairs)
+      or duplicate_options
       or set(options) - {'sslmode', 'sslrootcert'}
-      or options.get('sslmode') not in ('require', 'verify-ca', 'verify-full')
+      or options.get('sslmode') not in tls_modes
       or ('sslrootcert' in options and not options['sslrootcert'])
       or (options.get('sslmode') in ('verify-ca', 'verify-full') and not options.get('sslrootcert'))
       or (parsed.port is not None and not 1 <= parsed.port <= 65535)
     ):
       invalid(key)
+    if local_development:
+      # Explicit hostaddr prevents localhost DNS or libpq defaults from changing
+      # the effective destination; HOST remains available for TLS verification.
+      options['hostaddr'] = loopback_address(parsed.hostname)
     return {
       'ENGINE': 'django.db.backends.postgresql',
       'NAME': name,
