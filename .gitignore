@@ -17,6 +17,10 @@ __pycache__/
 
 # Local environment settings
 .env
+# Operator-filled environment variants (never commit)
+/env.fase1
+/env.fase2
+/env.production
 
 # Ignore the virtual environment
 venv/
