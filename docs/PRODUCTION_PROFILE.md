@@ -92,6 +92,12 @@ Neither production nor staging defaults to console or guesses a provider.
 
 SMTP defaults: `EMAIL_USE_TLS=True`, `EMAIL_USE_SSL=False`, timeout 30 seconds. For implicit TLS set `EMAIL_USE_TLS=False`, `EMAIL_USE_SSL=True`, `EMAIL_PORT=465`. Enabling both or disabling both fails strict startup. Port must be 1–65535. Do not test by actually sending mail during repository checks. Tests compile both backends with fake credentials; functional tests use locmem. Provider/domain verification, SPF/DKIM/DMARC and delivery must be verified separately.
 
+### Current sender domain and activation links
+
+The default development sender is `PagoLink <noreply@pagolinks.com>`. Production still requires an explicit `DEFAULT_FROM_EMAIL` in its protected service environment; changing source defaults or website DNS does not replace that value. With Resend, verify the sender's domain separately from the website's HTTPS certificate before using it.
+
+Activation links follow the request's secure scheme: HTTPS requests (including the trusted proxy configuration below) produce HTTPS links in both HTML and plaintext. Local HTTP requests retain HTTP links. When a previous activation email failed, resend to the existing inactive account after correcting its sender; do not create a replacement account or activate it manually. Provider acceptance is not proof of inbox delivery.
+
 ## Proxy trust, cookies and progressive HSTS
 
 Strict profiles enforce SSL redirect, secure session/CSRF cookies, HttpOnly sessions and SameSite **Lax**. Avoid blindly changing to Strict: checkout/browser returns must be tested.

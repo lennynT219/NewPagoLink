@@ -55,8 +55,9 @@ class EmailSettingsTest(TestCase):
 
 
 from django.core import mail
+from django.core.mail import EmailMultiAlternatives
 from django.contrib.auth.models import User
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.conf import settings
 
 # Import WILL fail until shared/email_service.py is created — this is the RED condition.
@@ -103,6 +104,7 @@ class EmailServiceTest(TestCase):
             context={'user': None, 'domain': 'h.com', 'uid': '1', 'token': '2'},
         )
         msg = mail.outbox[0]
+        assert isinstance(msg, EmailMultiAlternatives)
         alternatives = msg.alternatives
         self.assertTrue(any(mime == 'text/html' for _, mime in alternatives),
                         'Email must have text/html alternative')
@@ -213,6 +215,7 @@ class SendActivationEmailTest(TestCase):
         send_activation_email(self.user, request)
 
         msg = mail.outbox[0]
+        assert isinstance(msg, EmailMultiAlternatives)
         has_html = any(mime == 'text/html' for _, mime in msg.alternatives)
         self.assertTrue(has_html, 'Activation email must have text/html alternative')
 
@@ -224,11 +227,60 @@ class SendActivationEmailTest(TestCase):
         send_activation_email(self.user, request)
 
         msg = mail.outbox[0]
+        assert isinstance(msg, EmailMultiAlternatives)
         html_body = next(content for content, mime in msg.alternatives if mime == 'text/html')
+        assert isinstance(html_body, str)
         self.assertIn('/dashboard/activar/', html_body,
                       'Activation email body should contain the activation URL')
         self.assertIn('http://testserver', html_body,
                       'Activation email body should contain the domain URL')
+
+    @override_settings(
+        DEFAULT_FROM_EMAIL='PagoLink <noreply@pagolinks.com>',
+        ALLOWED_HOSTS=['pagolinks.com'],
+        SECURE_PROXY_SSL_HEADER=('HTTP_X_FORWARDED_PROTO', 'https'),
+    )
+    def test_secure_activation_uses_current_domain_without_changing_user(self) -> None:
+        import re
+        from urllib.parse import urlsplit
+
+        from django.urls import resolve
+        from django.utils.http import urlsafe_base64_decode
+
+        from accounts.services import send_activation_email
+        from accounts.tokens import account_activation_token
+
+        self.user.is_active = False
+        self.user.save(update_fields=['is_active'])
+        before = list(User.objects.values())
+        request = self.factory.get(
+            '/', HTTP_HOST='pagolinks.com', HTTP_X_FORWARDED_PROTO='https',
+        )
+        self.assertTrue(request.is_secure())
+        self.assertIsNone(send_activation_email(self.user, request))
+        self.assertEqual(len(mail.outbox), 1)
+        message = mail.outbox[0]
+        assert isinstance(message, EmailMultiAlternatives)
+        self.assertEqual(message.to, [self.user.email])
+        self.assertEqual(message.cc, [])
+        self.assertEqual(message.bcc, [])
+        self.assertEqual(message.from_email, 'PagoLink <noreply@pagolinks.com>')
+        self.assertEqual(message.subject, 'Active su cuenta de PagoLink')
+        html = next(body for body, mime in message.alternatives if mime == 'text/html')
+        assert isinstance(html, str)
+        match = re.search(r'href="([^"]*/dashboard/activar/[^"]+)"', html)
+        assert match is not None
+        url = match.group(1)
+        parsed = urlsplit(url)
+        self.assertEqual((parsed.scheme, parsed.netloc), ('https', 'pagolinks.com'))
+        self.assertEqual(html.count(url), 2)
+        self.assertEqual(message.body.count(url), 1)
+        self.assertNotIn('http://pagolinks.com', html)
+        activation = resolve(parsed.path)
+        self.assertEqual(activation.url_name, 'activate')
+        self.assertEqual(urlsafe_base64_decode(activation.kwargs['uidb64']).decode(), str(self.user.pk))
+        self.assertTrue(account_activation_token.check_token(self.user, activation.kwargs['token']))
+        self.assertEqual(list(User.objects.values()), before)
 
     def test_activation_email_no_exception_on_failure(self) -> None:
         """C1: Email failure should NOT raise exception — logged instead."""

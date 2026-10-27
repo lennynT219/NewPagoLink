@@ -152,7 +152,7 @@ def email_settings(strict, debug):
   if mode not in ('smtp', 'resend', 'console') or (strict and mode == 'console'):
     invalid('EMAIL_BACKEND_MODE')
   sender = (
-    required('DEFAULT_FROM_EMAIL') if strict else os.environ.get('DEFAULT_FROM_EMAIL', 'PagoLink <noreply@pagolink.ec>')
+    required('DEFAULT_FROM_EMAIL') if strict else os.environ.get('DEFAULT_FROM_EMAIL', 'PagoLink <noreply@pagolinks.com>')
   )
   address = parseaddr(sender)[1]
   if strict and (not re.fullmatch(r'[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+', address) or '\n' in sender or '\r' in sender):

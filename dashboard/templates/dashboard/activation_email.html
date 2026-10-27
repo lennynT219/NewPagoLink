@@ -10,7 +10,7 @@
     <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
             <td align="center" style="padding: 16px 0 24px;">
-                <a href="http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}"
+                <a href="{{ protocol|default:'http' }}://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}"
                    style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #00c9a7, #00b392); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; letter-spacing: 0.3px;">
                     Activar mi Cuenta
                 </a>
@@ -21,7 +21,7 @@
         Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:
     </p>
     <p style="background-color: #f5f6fa; padding: 12px 16px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #64748b; word-break: break-all; margin: 0 0 20px 0;">
-        http://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}
+        {{ protocol|default:'http' }}://{{ domain }}{% url 'dashboard:activate' uidb64=uid token=token %}
     </p>
     <p style="color: #374151; font-size: 15px; margin: 0;">
         Saludos,<br>

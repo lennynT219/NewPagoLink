@@ -39,6 +39,7 @@ def send_activation_email(user: User, req: Any) -> None:
   context = {
     'user': user,
     'domain': current_site.domain,
+    'protocol': 'https' if req.is_secure() else 'http',
     'uid': urlsafe_base64_encode(force_bytes(user.pk)),
     'token': account_activation_token.make_token(user),
   }
