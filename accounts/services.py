@@ -4,6 +4,7 @@ from typing import Any
 from django.contrib.auth.models import User
 from django.contrib.gis.geoip2 import GeoIP2
 from django.contrib.sites.shortcuts import get_current_site
+from django.db import transaction
 from django.urls import reverse_lazy
 from django.utils.encoding import force_bytes
 from django.utils.functional import Promise
@@ -17,6 +18,7 @@ from accounts.tokens import account_activation_token
 logger = logging.getLogger(__name__)
 
 
+@transaction.atomic
 def create_user(form_data: dict[str, Any]) -> User:
   """Crea el User y el Custom User de forma atómica."""
   user = User.objects.create_user(

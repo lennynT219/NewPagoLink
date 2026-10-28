@@ -42,6 +42,8 @@ class ContractAcceptanceForm(Form):
 class RegisterForm(Form):
   firstname = CharField(
     label='nombres',
+    max_length=150,
+    error_messages={'max_length': 'Este campo admite como máximo %(limit_value)s caracteres.'},
     widget=TextInput(
       attrs={
         'class': 'form-control',
@@ -51,6 +53,8 @@ class RegisterForm(Form):
   )
   lastname = CharField(
     label='apellidos',
+    max_length=150,
+    error_messages={'max_length': 'Este campo admite como máximo %(limit_value)s caracteres.'},
     widget=TextInput(
       attrs={
         'class': 'form-control',
@@ -60,6 +64,12 @@ class RegisterForm(Form):
   )
   identification = IntegerField(
     label='Cédula de identidad',
+    min_value=-(2**63),
+    max_value=2**63 - 1,
+    error_messages={
+      'min_value': 'La identificación está fuera del rango permitido.',
+      'max_value': 'La identificación está fuera del rango permitido.',
+    },
     widget=TextInput(attrs={'class': 'form-control', 'placeholder': 'Cédula', 'type': 'number'}),
   )
   phone = IntegerField(
@@ -73,6 +83,9 @@ class RegisterForm(Form):
   )
   email = EmailField(
     label='Correo electrónico',
+    # Registration uses the email as auth.User.username (150 characters).
+    max_length=150,
+    error_messages={'max_length': 'Este campo admite como máximo %(limit_value)s caracteres.'},
     widget=TextInput(
       attrs={
         'class': 'form-control',
@@ -90,6 +103,18 @@ class RegisterForm(Form):
       }
     ),
   )
+
+  def clean_identification(self):
+    identification = self.cleaned_data['identification']
+    if CustomUser.objects.filter(identification=identification).exists():
+      raise ValidationError('Esta identificación ya está registrada.')
+    return identification
+
+  def clean_phone(self):
+    phone = self.cleaned_data['phone']
+    if len(str(phone)) > 10:
+      raise ValidationError('El celular admite como máximo 10 caracteres.')
+    return phone
 
   def clean_email(self):
     email = self.cleaned_data['email']

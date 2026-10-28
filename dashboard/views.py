@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured
+from django.db import DataError, IntegrityError
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.utils.encoding import force_str
@@ -41,7 +42,12 @@ class Register(RedirectIfAuthMixin, FormView):
     return context
 
   def form_valid(self, form):
-    user = services.create_user(form.cleaned_data)
+    try:
+      user = services.create_user(form.cleaned_data)
+    except (IntegrityError, DataError):
+      # create_user has already rolled back; never notify a partially saved user.
+      form.add_error(None, 'No se pudo completar el registro con estos datos. Revisalos e intentá nuevamente.')
+      return self.form_invalid(form)
     services.send_activation_email(user, self.request)
     return super().form_valid(form)
 
