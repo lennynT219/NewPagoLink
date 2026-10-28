@@ -14,6 +14,11 @@
   --teal-dark: #00b392;
   --teal-glow: rgba(0, 201, 167, 0.25);
 
+  /* Light-surface text and white-label actions; keep bright brand accents on navy. */
+  --teal-text: #007f6b;
+  --teal-action: #007f6b;
+  --teal-action-dark: #006b5a;
+
   /* Neutral Grays */
   --gray-50: #f9fafb;
   --gray-100: #f5f6fa;
@@ -121,13 +126,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 a {
-  color: var(--teal);
+  color: var(--teal-text);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
 
 a:hover {
-  color: var(--teal-dark);
+  color: var(--teal-action-dark);
 }
 
 img {
@@ -200,12 +205,12 @@ img {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   padding: var(--space-6);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Cards are informational surfaces, not implied interactive controls. */
 .card-modern:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: none;
+  box-shadow: var(--shadow-card);
 }
 
 /* Card Stat — flex card with icon circle, big number, label */
@@ -217,12 +222,11 @@ img {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   padding: var(--space-5);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .card-stat:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: none;
+  box-shadow: var(--shadow-card);
 }
 
 .card-stat-icon {
@@ -267,7 +271,7 @@ img {
   font-weight: var(--font-weight-semibold);
   font-family: var(--font-family);
   cursor: pointer;
-  background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+  background: linear-gradient(135deg, var(--teal-action) 0%, var(--teal-action-dark) 100%);
   color: var(--white);
   box-shadow: var(--shadow-glow);
   transition: all var(--transition-fast);
@@ -292,20 +296,20 @@ img {
   justify-content: center;
   gap: var(--space-2);
   padding: 12px 28px;
-  border: 2px solid var(--teal);
+  border: 2px solid var(--teal-text);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   font-family: var(--font-family);
   cursor: pointer;
   background: transparent;
-  color: var(--teal);
+  color: var(--teal-text);
   transition: all var(--transition-fast);
   text-decoration: none;
 }
 
 .btn-secondary:hover {
-  background: var(--teal);
+  background: var(--teal-action);
   color: var(--white);
   transform: translateY(-1px);
 }
@@ -331,7 +335,19 @@ img {
 }
 
 .input-modern::placeholder {
-  color: var(--gray-400);
+  color: var(--gray-500);
+  opacity: 1;
+}
+
+/* Two-tone keyboard focus stays distinct on both light and navy surfaces.
+   After field focus so the white separator is not replaced by its soft glow. */
+.btn:focus-visible,
+.btn-primary-auth:focus-visible,
+.btn-secondary:focus-visible,
+.input-modern:focus-visible {
+  outline: 3px solid var(--navy-900);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--white);
 }
 
 /* Badge Status — small pill badges */
