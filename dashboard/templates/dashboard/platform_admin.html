@@ -1,0 +1,24 @@
+{% extends 'dashboard/layouts/base.html' %}
+
+{% block content %}
+<h1>Administración de PagoLink</h1>
+<p>Gestioná la plataforma sin registrar un comercio ni aceptar un contrato de vendedor.</p>
+<p>Este rol no habilita cobros propios ni concede acceso al administrador técnico de Django.</p>
+{% for message in messages %}
+<div role="status" class="alert">{{ message }}</div>
+{% endfor %}
+<section class="card-modern" style="padding:var(--space-6);">
+    <h2>Otorgar rol administrativo</h2>
+    <p>Ingresá el correo de un usuario existente y activo. Podrá administrar la plataforma
+       y otorgar este mismo rol a otros usuarios. Esta pantalla no permite quitar roles.</p>
+    <form method="post" action="{% url 'dashboard:platform-admin' %}">
+        {% csrf_token %}
+        {% if form.errors %}
+        <div role="alert">{{ form.errors }}</div>
+        {% endif %}
+        <p>{{ form.email.label_tag }} {{ form.email }}</p>
+        <p>{{ form.confirm }} {{ form.confirm.label_tag }}</p>
+        <button type="submit" class="btn btn-primary">Otorgar rol administrativo</button>
+    </form>
+</section>
+{% endblock %}

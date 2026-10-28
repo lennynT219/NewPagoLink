@@ -99,7 +99,7 @@ class Login(RedirectIfAuthMixin, FormView):
     login(self.request, user)
     redirect_url = services.login_redirect_url(user)
     messages.success(self.request, f'¡Bienvenido de nuevo, {user.first_name or user.username}!')
-    return redirect(redirect_url)
+    return redirect(str(redirect_url))
 
   def form_invalid(self, form):
     context = self.get_context_data(form=form)
@@ -109,6 +109,12 @@ class Login(RedirectIfAuthMixin, FormView):
 
 class Dashboard(LoginRequiredMixin, ContractRequiredMixin, TemplateView):
   template_name = 'dashboard/dashboard.html'
+
+  def dispatch(self, request, *args, **kwargs):
+    from accounts.admin_roles import is_platform_admin
+    if is_platform_admin(request.user):
+      return redirect('dashboard:platform-admin')
+    return super().dispatch(request, *args, **kwargs)
 
   def get_context_data(self, **kwargs):
     context = super().get_context_data(**kwargs)

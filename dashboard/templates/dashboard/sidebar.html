@@ -14,6 +14,7 @@
 <nav class="sidebar-nav">
     <ul class="sidebar-menu">
 
+        {% if not request.user.customuser.is_admin_role %}
         <li class="sidebar-section-title">PRINCIPAL</li>
         <li class="sidebar-item">
             <a href="{% url 'dashboard:dashboard' %}" class="sidebar-link active">
@@ -76,6 +77,8 @@
             </a>
         </li>
 
+        {% endif %}
+
         <li class="sidebar-section-title">CUENTA</li>
         <li class="sidebar-item">
             <a href="{% url 'dashboard:logout' %}" class="sidebar-link sidebar-link-danger">
@@ -86,6 +89,12 @@
 
         {% if request.user.customuser.is_admin_role %}
         <li class="sidebar-section-title sidebar-section-title-warning">ADMINISTRACIÓN</li>
+        <li class="sidebar-item">
+            <a href="{% url 'dashboard:platform-admin' %}" class="sidebar-link">
+                <i class="fas fa-users-cog"></i>
+                <span>Panel Administrativo</span>
+            </a>
+        </li>
         <li class="sidebar-item">
             <a href="{% url 'banking:bank_list' %}" class="sidebar-link">
                 <i class="fas fa-university"></i>

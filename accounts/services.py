@@ -6,8 +6,10 @@ from django.contrib.gis.geoip2 import GeoIP2
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse_lazy
 from django.utils.encoding import force_bytes
+from django.utils.functional import Promise
 from django.utils.http import urlsafe_base64_encode
 
+from accounts.admin_roles import is_platform_admin
 from accounts.contracts import has_current_acceptance
 from accounts.models import CustomUser
 from accounts.tokens import account_activation_token
@@ -48,8 +50,10 @@ def send_activation_email(user: User, req: Any) -> None:
     logger.error('Activation email failed for %s', user.email)
 
 
-def login_redirect_url(user: User) -> str:
+def login_redirect_url(user: User) -> str | Promise:
   """Determina a dónde enviar al usuario tras el login."""
+  if is_platform_admin(user):
+    return reverse_lazy('dashboard:platform-admin')
   if user.is_staff:
     return reverse_lazy('admin:index')
   try:

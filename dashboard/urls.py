@@ -2,10 +2,12 @@ from django.urls import path, re_path, reverse_lazy
 from django.contrib.auth import views as auth_views
 from accounts.views import ProfileUpdateView
 from . import views
+from .admin_views import PlatformAdminView
 
 app_name = 'dashboard'
 
 urlpatterns = [
+  path('administracion/', PlatformAdminView.as_view(), name='platform-admin'),
   path('registrarse', views.Register.as_view(), name='register'),
   path('perfil/', ProfileUpdateView.as_view(), name='user-update'),
   re_path(
