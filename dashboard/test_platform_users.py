@@ -92,7 +92,7 @@ class PlatformUserDirectoryTests(TestCase):
     self.assertEqual(list(CustomUser.objects.order_by('pk').values()), expected_profiles)
     entry = LogEntry.objects.get()
     self.assertEqual(entry.user.pk, self.admin.pk)
-    self.assertEqual(entry.object_id, str(self.target.customuser.pk))
+    self.assertEqual(entry.object_id, str(CustomUser.objects.get(user=self.target).pk))
     self.assertEqual(self.client.get(self.home).context['summary'], {'total': 4, 'active': 3, 'admins': 2})
 
   def test_directory_and_actions_remain_private_to_app_administrators(self):
