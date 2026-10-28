@@ -271,8 +271,9 @@ img {
   font-weight: var(--font-weight-semibold);
   font-family: var(--font-family);
   cursor: pointer;
-  background: linear-gradient(135deg, var(--teal-action) 0%, var(--teal-action-dark) 100%);
-  color: var(--white);
+  /* Keep the brand vivid; dark ink remains readable across both stops. */
+  background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+  color: var(--navy-900);
   box-shadow: var(--shadow-glow);
   transition: all var(--transition-fast);
   letter-spacing: 0.3px;
@@ -282,7 +283,7 @@ img {
 .btn-primary-auth:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 28px rgba(0, 201, 167, 0.35);
-  color: var(--white);
+  color: var(--navy-900);
 }
 
 .btn-primary-auth:active {
@@ -296,14 +297,14 @@ img {
   justify-content: center;
   gap: var(--space-2);
   padding: 12px 28px;
-  border: 2px solid var(--teal-text);
+  border: 2px solid #009e84;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   font-family: var(--font-family);
   cursor: pointer;
   background: transparent;
-  color: var(--teal-text);
+  color: var(--navy-900);
   transition: all var(--transition-fast);
   text-decoration: none;
 }

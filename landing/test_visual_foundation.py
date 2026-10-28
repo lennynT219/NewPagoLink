@@ -47,7 +47,21 @@ class VisualFoundationTests(unittest.TestCase):
   def assert_readable(self, foreground, background):
     self.assertGreaterEqual(contrast(foreground, background), 4.5)
 
-  def test_primary_white_label_on_each_gradient_stop(self):
+  def test_primary_buttons_use_vivid_brand_fill_and_navy_labels(self):
+    rule = declarations('.btn-primary-auth')
+    self.assertEqual(re.findall(r'var\(--[\w-]+\)', rule['background']), ['var(--teal)', 'var(--teal-dark)'])
+    self.assertEqual(rule['color'], 'var(--navy-900)')
+    self.assertEqual(declarations('.btn-primary-auth:hover')['color'], 'var(--navy-900)')
+
+  def test_secondary_buttons_have_a_livelier_border_without_changing_links(self):
+    rule = declarations('.btn-secondary')
+    self.assertEqual(rule['border'], '2px solid #009e84')
+    self.assertEqual(rule['color'], 'var(--navy-900)')
+    self.assertGreaterEqual(contrast('#009e84', 'var(--white)'), 3)
+    self.assertEqual(declarations('a')['color'], 'var(--teal-text)')
+    self.assertEqual(declarations('a:hover')['color'], 'var(--teal-action-dark)')
+
+  def test_primary_label_on_each_gradient_stop(self):
     rule = declarations('.btn-primary-auth')
     stops = re.findall(r'var\(--[\w-]+\)', rule['background'])
     self.assertEqual(len(stops), 2)
