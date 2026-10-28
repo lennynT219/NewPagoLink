@@ -4,6 +4,7 @@ No Django setup or application state is needed. These checks deliberately cover
 only the shared declarations below, not inline overrides or WCAG certification.
 """
 
+import hashlib
 import re
 import unittest
 from pathlib import Path
@@ -125,6 +126,16 @@ class VisualFoundationTests(unittest.TestCase):
     self.assertEqual(declarations('.input-modern:focus')['background'], 'var(--white)')
     self.assertEqual(declarations('.grid-3')['grid-template-columns'], '1fr')
     self.assertEqual(declarations('.grid-2')['grid-template-columns'], '1fr')
+
+  def test_shared_layouts_version_stylesheet_by_current_content(self):
+    root = Path(__file__).resolve().parent.parent
+    digest = hashlib.sha256((root / 'landing/static/css/design-system.css').read_bytes()).hexdigest()[:12]
+    asset = "{% static 'css/design-system.css' %}"
+    for layout in ('landing/templates/landing/layouts/base.html', 'dashboard/templates/dashboard/layouts/base.html'):
+      with self.subTest(layout=layout):
+        markup = (root / layout).read_text()
+        self.assertEqual(markup.count(asset), 1)
+        self.assertTrue(f'href="{asset}?v={digest}"' in markup, f'{layout}: stylesheet content version missing')
 
 
 if __name__ == '__main__':
