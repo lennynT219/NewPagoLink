@@ -84,7 +84,11 @@
         .dashboard-navbar-user-btn:hover,
         .dashboard-navbar-user-btn:focus {
             color: var(--white);
-            outline: none;
+        }
+
+        .dashboard-navbar-user-btn:focus-visible {
+            outline: 2px solid var(--teal);
+            outline-offset: 4px;
         }
 
         /* Pure CSS dropdown — no Bootstrap JS needed */
@@ -165,6 +169,11 @@
 
         .sidebar-toggle-btn:hover {
             color: var(--white);
+        }
+
+        .sidebar-toggle-btn:focus-visible {
+            outline: 2px solid var(--teal);
+            outline-offset: 2px;
         }
 
         /* Body: sidebar + content */
@@ -332,6 +341,7 @@
                 position: fixed;
                 top: 60px;
                 left: -260px;
+                visibility: hidden;
                 z-index: 1025;
                 transition: left var(--transition-fast);
                 box-shadow: var(--shadow-lg);
@@ -339,6 +349,7 @@
 
             .dashboard-sidebar.open {
                 left: 0;
+                visibility: visible;
             }
 
             .dashboard-content {
@@ -353,9 +364,9 @@
         <!-- TOP NAVBAR -->
         <nav class="dashboard-navbar">
             <div class="dashboard-navbar-left">
-                <button class="sidebar-toggle-btn" type="button"
-                        onclick="document.getElementById('dashboardSidebar').classList.toggle('open')"
-                        aria-label="Toggle sidebar">
+                <button class="sidebar-toggle-btn" id="sidebarToggle" type="button"
+                        aria-controls="dashboardSidebar" aria-expanded="false"
+                        aria-label="Menú de navegación">
                     <i class="fas fa-bars"></i>
                 </button>
                 <a href="{% url 'dashboard:dashboard' %}" class="dashboard-navbar-brand">
@@ -414,6 +425,39 @@
     <script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
     <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <script>
+        (function() {
+            var toggle = document.getElementById('sidebarToggle');
+            var sidebar = document.getElementById('dashboardSidebar');
+            var mobile = window.matchMedia('(max-width: 768px)');
+            function setOpen(open) {
+                sidebar.classList.toggle('open', open);
+                toggle.setAttribute('aria-expanded', String(open));
+            }
+            toggle.addEventListener('click', function() {
+                if (mobile.matches) setOpen(!sidebar.classList.contains('open'));
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && mobile.matches && sidebar.classList.contains('open')) {
+                    setOpen(false);
+                    toggle.focus();
+                }
+            });
+            // Capture also sees clicks on the account button, which stops bubbling.
+            document.addEventListener('click', function(e) {
+                if (mobile.matches && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                    setOpen(false);
+                }
+            }, true);
+            sidebar.addEventListener('click', function(e) {
+                if (mobile.matches && e.target.closest('a')) setOpen(false);
+            });
+            mobile.addEventListener('change', function() {
+                setOpen(false);
+                // Desktop links remain visible; only mobile needs focus recovery.
+                if (mobile.matches && sidebar.contains(document.activeElement)) toggle.focus();
+            });
+        })();
+
         // Close user dropdown when clicking outside
         document.addEventListener('click', function(e) {
             var dd = document.getElementById('userDropdown');

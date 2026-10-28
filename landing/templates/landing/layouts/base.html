@@ -81,8 +81,19 @@
             transition: color var(--transition-fast);
         }
 
-        .landing-navbar .nav-links a:hover {
+        .landing-navbar .nav-links a:hover,
+        .landing-navbar .nav-links a[aria-current="page"] {
             color: var(--teal);
+        }
+
+        .landing-navbar .nav-links a[aria-current="page"] {
+            text-decoration: underline;
+            text-underline-offset: 4px;
+        }
+
+        .nav-toggle:focus-visible {
+            outline: 2px solid var(--teal);
+            outline-offset: 4px;
         }
 
         .nav-cta {
@@ -99,7 +110,7 @@
             color: var(--navy-900) !important;
         }
 
-        /* Mobile nav toggle (pure CSS) */
+        /* Mobile navigation disclosure */
         .nav-toggle {
             display: none;
             background: none;
@@ -210,14 +221,15 @@
                 <i class="fas fa-credit-card"></i>
                 PagoLink
             </a>
-            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+            <button class="nav-toggle" id="navToggle" type="button" aria-label="Menú de navegación"
+                    aria-controls="navLinks" aria-expanded="false">
                 <i class="fas fa-bars"></i>
             </button>
             <ul class="nav-links" id="navLinks">
-                <li><a href="{% url 'landing:index' %}">Inicio</a></li>
-                <li><a href="{% url 'landing:pricing' %}">Precios</a></li>
-                <li><a href="{% url 'landing:contact' %}">Contáctenos</a></li>
-                <li><a href="{% url 'dashboard:login' %}" class="nav-cta">Iniciar sesión</a></li>
+                <li><a href="{% url 'landing:index' %}" aria-current="{% if request.resolver_match.view_name == 'landing:index' %}page{% else %}false{% endif %}">Inicio</a></li>
+                <li><a href="{% url 'landing:pricing' %}" aria-current="{% if request.resolver_match.view_name == 'landing:pricing' %}page{% else %}false{% endif %}">Precios</a></li>
+                <li><a href="{% url 'landing:contact' %}" aria-current="{% if request.resolver_match.view_name == 'landing:contact' %}page{% else %}false{% endif %}">Contáctenos</a></li>
+                <li><a href="{% url 'dashboard:login' %}" class="nav-cta" aria-current="{% if request.resolver_match.view_name == 'dashboard:login' %}page{% else %}false{% endif %}">Iniciar sesión</a></li>
             </ul>
         </div>
     </nav>
@@ -271,10 +283,34 @@
                 }
             });
 
-            // Mobile menu toggle
+            // Disclosure stays non-modal: outside controls retain their normal focus.
             if (toggle && links) {
+                var mobile = window.matchMedia('(max-width: 992px)');
+                function setOpen(open) {
+                    links.classList.toggle('open', open);
+                    toggle.setAttribute('aria-expanded', String(open));
+                }
                 toggle.addEventListener('click', function() {
-                    links.classList.toggle('open');
+                    if (mobile.matches) setOpen(!links.classList.contains('open'));
+                });
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && mobile.matches && links.classList.contains('open')) {
+                        setOpen(false);
+                        toggle.focus();
+                    }
+                });
+                document.addEventListener('click', function(e) {
+                    if (mobile.matches && !links.contains(e.target) && !toggle.contains(e.target)) {
+                        setOpen(false);
+                    }
+                }, true);
+                links.addEventListener('click', function(e) {
+                    if (mobile.matches && e.target.closest('a')) setOpen(false);
+                });
+                mobile.addEventListener('change', function() {
+                    setOpen(false);
+                    // On returning to mobile, do not leave focus inside hidden links.
+                    if (mobile.matches && links.contains(document.activeElement)) toggle.focus();
                 });
             }
         })();
