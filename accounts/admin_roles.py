@@ -15,13 +15,15 @@ def is_platform_admin(user):
 
 
 @transaction.atomic
-def grant_platform_admin(actor, email):
+def grant_platform_admin(actor, email, *, expected_user_id=None):
   """Grant only the app role; role and audit evidence succeed or roll back together."""
   if not CustomUser.objects.filter(user=actor, user__is_active=True, is_admin_role=True).exists():
     raise PermissionDenied
   candidates = list(User.objects.select_related('customuser').filter(email__iexact=email)[:2])
   if len(candidates) != 1 or not candidates[0].is_active:
     raise ValidationError('Ingresá el correo de un único usuario activo con perfil registrado.')
+  if expected_user_id is not None and candidates[0].pk != expected_user_id:
+    raise ValidationError('La cuenta seleccionada cambió. Actualizá el listado e intentá de nuevo.')
   profile = getattr(candidates[0], 'customuser', None)
   if profile is None:
     raise ValidationError('Ingresá el correo de un único usuario activo con perfil registrado.')

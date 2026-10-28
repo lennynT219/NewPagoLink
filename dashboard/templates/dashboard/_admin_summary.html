@@ -1,0 +1,14 @@
+<div class="admin-stats" aria-label="Resumen de usuarios">
+    <div class="card-stat">
+        <div class="card-stat-icon admin-icon"><i class="fas fa-users" aria-hidden="true"></i></div>
+        <div class="card-stat-info"><span class="card-stat-value">{{ summary.total }}</span><span class="card-stat-label">Usuarios registrados</span></div>
+    </div>
+    <div class="card-stat">
+        <div class="card-stat-icon admin-icon-teal"><i class="fas fa-user-check" aria-hidden="true"></i></div>
+        <div class="card-stat-info"><span class="card-stat-value">{{ summary.active }}</span><span class="card-stat-label">Cuentas activas</span></div>
+    </div>
+    <div class="card-stat">
+        <div class="card-stat-icon admin-icon"><i class="fas fa-user-shield" aria-hidden="true"></i></div>
+        <div class="card-stat-info"><span class="card-stat-value">{{ summary.admins }}</span><span class="card-stat-label">Administradores</span></div>
+    </div>
+</div>

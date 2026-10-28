@@ -79,20 +79,18 @@
 
         {% endif %}
 
-        <li class="sidebar-section-title">CUENTA</li>
-        <li class="sidebar-item">
-            <a href="{% url 'dashboard:logout' %}" class="sidebar-link sidebar-link-danger">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Cerrar Sesión</span>
-            </a>
-        </li>
-
         {% if request.user.customuser.is_admin_role %}
         <li class="sidebar-section-title sidebar-section-title-warning">ADMINISTRACIÓN</li>
         <li class="sidebar-item">
-            <a href="{% url 'dashboard:platform-admin' %}" class="sidebar-link">
+            <a href="{% url 'dashboard:platform-admin' %}" class="sidebar-link{% if request.resolver_match.url_name == 'platform-admin' %} active{% endif %}" aria-current="{% if request.resolver_match.url_name == 'platform-admin' %}page{% else %}false{% endif %}">
                 <i class="fas fa-users-cog"></i>
                 <span>Panel Administrativo</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'dashboard:platform-users' %}" class="sidebar-link{% if request.resolver_match.url_name == 'platform-users' %} active{% endif %}" aria-current="{% if request.resolver_match.url_name == 'platform-users' %}page{% else %}false{% endif %}">
+                <i class="fas fa-users"></i>
+                <span>Usuarios</span>
             </a>
         </li>
         <li class="sidebar-item">
@@ -114,6 +112,14 @@
             </a>
         </li>
         {% endif %}
+
+        <li class="sidebar-section-title">CUENTA</li>
+        <li class="sidebar-item">
+            <a href="{% url 'dashboard:logout' %}" class="sidebar-link sidebar-link-danger">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Cerrar Sesión</span>
+            </a>
+        </li>
 
     </ul>
 </nav>

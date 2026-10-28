@@ -1,0 +1,85 @@
+{% extends 'dashboard/layouts/base.html' %}
+{% block title %}Usuarios{% endblock %}
+{% block css %}{% include 'dashboard/_admin_style.html' %}{% endblock %}
+{% block content %}
+<div class="admin-page">
+    <header class="admin-header">
+        <div>
+            <p class="admin-eyebrow">Administración / Usuarios</p>
+            <h1>Usuarios de la plataforma</h1>
+            <p class="admin-muted">Encontrá una cuenta, consultá su estado y gestioná sus permisos.</p>
+        </div>
+        <a class="btn-secondary" href="{% url 'dashboard:platform-admin' %}"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver al inicio</a>
+    </header>
+    {% include 'dashboard/_admin_feedback.html' %}
+    {% include 'dashboard/_admin_summary.html' %}
+    <div class="card-modern admin-directory">
+        <div class="admin-toolbar">
+            <form method="get" class="admin-search" role="search">
+                <div class="admin-search-field">
+                    <label class="sr-only" for="user-search">Buscar usuarios</label>
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input id="user-search" class="input-modern" type="search" name="q" value="{{ search }}" maxlength="100" placeholder="Buscar por nombre, usuario o correo">
+                </div>
+                <button class="btn-primary-auth" type="submit">Buscar</button>
+                {% if search %}<a class="btn-secondary" href="{% url 'dashboard:platform-users' %}">Limpiar</a>{% endif %}
+            </form>
+            <span class="admin-muted" aria-live="polite">{{ page_obj.paginator.count }} resultado{{ page_obj.paginator.count|pluralize:"s" }}</span>
+        </div>
+        {% if page_obj %}
+        <div class="admin-table-scroll" role="region" aria-label="Listado de usuarios" tabindex="0">
+            <table class="table-modern">
+                <thead><tr><th scope="col">Usuario</th><th scope="col">Correo electrónico</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Registro</th><th scope="col">Acciones</th></tr></thead>
+                <tbody>
+                {% for member in page_obj %}
+                    <tr id="user-{{ member.pk }}">
+                        <td><div class="admin-person"><span class="admin-avatar" aria-hidden="true">{{ member.get_full_name|default:member.username|first|upper }}</span><div><strong>{{ member.get_full_name|default:member.username }}</strong><small>@{{ member.username }}{% if member.pk == request.user.pk %} · Tu cuenta{% endif %}</small></div></div></td>
+                        <td>{{ member.email|default:"Sin correo" }}</td>
+                        <td>{% if member.customuser.is_admin_role %}<span class="badge-status admin-role"><i class="fas fa-shield-alt" aria-hidden="true"></i> Administrador</span>{% else %}<span class="badge-status admin-role-user">Usuario</span>{% endif %}</td>
+                        <td><span class="admin-status{% if member.is_active %} admin-status-active{% endif %}">{% if member.is_active %}Activo{% else %}Inactivo{% endif %}</span></td>
+                        <td><span class="admin-muted">{{ member.date_joined|date:"d/m/Y" }}</span></td>
+                        <td>
+                        {% if member.customuser.is_admin_role %}
+                            <span class="admin-muted"><i class="fas fa-check-circle" aria-hidden="true"></i> Rol asignado</span>
+                        {% elif member.is_active and member.customuser and member.email %}
+                            <details class="admin-grant">
+                                <summary class="btn-secondary"><i class="fas fa-user-shield" aria-hidden="true"></i> Hacer administrador</summary>
+                                <form method="post" action="{% url 'dashboard:platform-users' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="email" value="{{ member.email }}">
+                                    <input type="hidden" name="user_id" value="{{ member.pk }}">
+                                    <strong>Confirmar acceso administrativo</strong>
+                                    <p class="admin-muted">Podrá gestionar la plataforma y otorgar este mismo rol a otras cuentas.</p>
+                                    <label for="grant-{{ member.pk }}"><input id="grant-{{ member.pk }}" type="checkbox" name="confirm" required>Confirmo otorgar el rol a {{ member.email }}.</label>
+                                    <button type="submit" class="btn-primary-auth">Confirmar administrador</button>
+                                </form>
+                            </details>
+                        {% else %}
+                            <span class="admin-muted">{% if not member.is_active %}Cuenta inactiva{% elif not member.customuser %}Sin perfil registrado{% else %}Sin correo registrado{% endif %}</span>
+                        {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <nav class="admin-pagination" aria-label="Paginación de usuarios">
+            <span class="admin-muted">Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }} usuarios</span>
+            <div class="d-flex gap-2">
+                {% if page_obj.has_previous %}<a class="btn-secondary" href="?q={{ search|urlencode }}&amp;page={{ page_obj.previous_page_number }}" aria-label="Página anterior"><i class="fas fa-chevron-left" aria-hidden="true"></i> Anterior</a>{% endif %}
+                <span class="admin-status">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}<a class="btn-secondary" href="?q={{ search|urlencode }}&amp;page={{ page_obj.next_page_number }}" aria-label="Página siguiente">Siguiente <i class="fas fa-chevron-right" aria-hidden="true"></i></a>{% endif %}
+            </div>
+        </nav>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="fas fa-users" aria-hidden="true"></i></div>
+            <h2 class="empty-state-title">No encontramos usuarios</h2>
+            <p class="empty-state-message">Probá con otro nombre o correo para encontrar la cuenta.</p>
+            <a class="btn-secondary" href="{% url 'dashboard:platform-users' %}">Ver todos los usuarios</a>
+        </div>
+        {% endif %}
+    </div>
+    <p class="admin-muted" style="margin-top:var(--space-4);"><i class="fas fa-lock" aria-hidden="true"></i> Los cambios de rol quedan auditados. No modifican la activación de la cuenta ni conceden permisos técnicos de Django.</p>
+</div>
+{% endblock %}

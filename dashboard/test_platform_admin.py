@@ -48,9 +48,9 @@ class PlatformAdministrationTests(TestCase):
   def test_panel_needs_no_commerce_or_contract_and_does_not_write(self):
     before = self.snapshot()
     response = self.client.get(self.url)
-    self.assertContains(response, 'Administración de PagoLink')
-    self.assertContains(response, 'Otorgar rol administrativo')
-    self.assertContains(response, 'name="csrfmiddlewaretoken"')
+    self.assertContains(response, 'Centro de administración')
+    self.assertContains(response, '/dashboard/administracion/usuarios/')
+    self.assertNotContains(response, 'name="email"')
     self.assertNotContains(response, 'Generar Nuevo Link')
     self.assertNotContains(response, 'Mis Retiros')
     self.assertNotContains(response, 'Contrato Legal')
@@ -121,8 +121,12 @@ class PlatformAdministrationTests(TestCase):
     duplicate = User.objects.create_user('duplicate', email=self.target.email.upper())
     CustomUser.objects.create(user=duplicate, identification=706)
     for email, confirm in (
-      (self.operator.email, ''), ('invalid', 'on'), ('unknown@example.com', 'on'),
-      (inactive.email, 'on'), (orphan.email, 'on'), (self.target.email, 'on'),
+      (self.operator.email, ''),
+      ('invalid', 'on'),
+      ('unknown@example.com', 'on'),
+      (inactive.email, 'on'),
+      (orphan.email, 'on'),
+      (self.target.email, 'on'),
     ):
       with self.subTest(email=email, confirm=confirm):
         before = self.snapshot()
@@ -139,7 +143,7 @@ class PlatformAdministrationTests(TestCase):
     before = self.snapshot()
     self.assertEqual(csrf_client.post(self.url, {'email': self.target.email, 'confirm': 'on'}).status_code, 403)
     self.assertEqual(self.snapshot(), before)
-    response = csrf_client.get(self.url)
+    response = csrf_client.get('/dashboard/administracion/usuarios/')
     self.assertEqual(response.status_code, 200)
     token = csrf_client.cookies['csrftoken'].value
     response = csrf_client.post(self.url, {'email': self.target.email, 'confirm': 'on', 'csrfmiddlewaretoken': token})

@@ -1,0 +1,6 @@
+{% for message in messages %}
+<div role="status" class="admin-notice admin-notice-success"><i class="fas fa-check-circle" aria-hidden="true"></i><span>{{ message }}</span></div>
+{% endfor %}
+{% if form.errors %}
+<div role="alert" class="admin-notice admin-notice-error"><i class="fas fa-exclamation-circle" aria-hidden="true"></i><div>{{ form.errors }}</div></div>
+{% endif %}
