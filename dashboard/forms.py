@@ -15,6 +15,7 @@ from django.forms import (
 )
 
 from accounts.contracts import has_current_acceptance
+from accounts.merchant_profile import validate_contact_phone
 from accounts.models import CustomUser
 
 
@@ -72,12 +73,17 @@ class RegisterForm(Form):
     },
     widget=TextInput(attrs={'class': 'form-control', 'placeholder': 'Cédula', 'type': 'number'}),
   )
-  phone = IntegerField(
+  phone = CharField(
     label='Nro de celular',
+    max_length=10,
+    error_messages={'max_length': 'El celular admite como máximo 10 caracteres.'},
     widget=TextInput(
       attrs={
         'class': 'form-control',
         'placeholder': 'Nro de celular',
+        'type': 'tel',
+        'inputmode': 'numeric',
+        'autocomplete': 'tel-national',
       }
     ),
   )
@@ -112,8 +118,7 @@ class RegisterForm(Form):
 
   def clean_phone(self):
     phone = self.cleaned_data['phone']
-    if len(str(phone)) > 10:
-      raise ValidationError('El celular admite como máximo 10 caracteres.')
+    validate_contact_phone(phone)
     return phone
 
   def clean_email(self):

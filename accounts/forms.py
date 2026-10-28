@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.db import models, transaction
 
-from accounts.merchant_profile import CONTRACT_PROFILE_FIELDS
+from accounts.merchant_profile import CONTRACT_PROFILE_FIELDS, validate_contact_phone
 
 from .models import CustomUser
 
@@ -38,7 +38,9 @@ class UserProfileForm(forms.ModelForm):
       attrs={
         'class': 'input-modern',
         'placeholder': '09XXXXXXXX',
-        'autocomplete': 'tel',
+        'type': 'tel',
+        'inputmode': 'numeric',
+        'autocomplete': 'tel-national',
       }
     ),
   )
@@ -64,6 +66,11 @@ class UserProfileForm(forms.ModelForm):
         }
       ),
     }
+
+  def clean_phone(self):
+    phone = self.cleaned_data['phone']
+    validate_contact_phone(phone)
+    return phone
 
   def __init__(self, *args, **kwargs):
     user = kwargs.get('instance')

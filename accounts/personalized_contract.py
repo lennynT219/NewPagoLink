@@ -12,7 +12,12 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.validators import validate_email
 
 from .contract_terms import CONTRACT_PARAGRAPHS, CONTRACT_SHA256, _paragraph_kind
-from .merchant_profile import CONTRACT_PROFILE_FIELDS, contract_profile_data, missing_contract_profile_fields
+from .merchant_profile import (
+  CONTRACT_PROFILE_FIELDS,
+  contract_profile_data,
+  missing_contract_profile_fields,
+  validate_contact_phone,
+)
 
 PROVIDER_DEFAULTS = {
   'name': 'ADREST DEL ECUADOR CÍA. LTDA.',
@@ -89,7 +94,9 @@ def personalized_contract(seller):
       raise ValidationError('Invalid contact')
   except ValidationError:
     labels.append('Correo electrónico registrado (solicitá su actualización al administrador de la cuenta)')
-  if not re.fullmatch(r'[0-9]{10}', phone):
+  try:
+    validate_contact_phone(phone)
+  except ValidationError:
     labels.append('Teléfono registrado de contacto')
   if labels:
     raise IncompleteContractProfile('Completá o corregí tu perfil antes de aceptar: ' + '; '.join(labels) + '.')

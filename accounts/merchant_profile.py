@@ -19,6 +19,9 @@ validate_commerce_identification = RegexValidator(
 )
 
 
+validate_contact_phone = RegexValidator(regex=r'\A[0-9]{10}\Z', message='Ingresá un teléfono de 10 dígitos.')
+
+
 def contract_profile_data(seller):
   """Return trimmed declared values only; never substitute personal identity."""
   return {

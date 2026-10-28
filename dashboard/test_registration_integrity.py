@@ -114,8 +114,8 @@ class RegistrationIntegrityTests(TransactionTestCase):
     self.assertFalse(profile.email_active)
     self.assertFalse(profile.is_admin_role)
     self.assertEqual(profile.identification, int(self.data['identification']))
-    # Preserve the existing numeric-phone coercion; this fix does not change stored formats.
-    self.assertEqual(profile.phone, str(int(self.data['phone'])))
+    # Keep the submitted contact text, including the leading zero needed by the contract.
+    self.assertEqual(profile.phone, self.data['phone'])
     self.assertEqual(len(mail.outbox), 1)
     message = mail.outbox[0]
     assert isinstance(message.body, str)
