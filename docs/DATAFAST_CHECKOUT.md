@@ -46,6 +46,10 @@ For identification, the manual permits left-zero padding of an actual short docu
 
 Without controlled-proxy opt-in, use only request `REMOTE_ADDR`; ignore POST IPs, X-Real-IP and X-Forwarded-For. With existing `SECURE_PROXY_SSL_HEADER` opt-in, require a single valid proxy-overwritten X-Real-IP and reject the backend peer as the buyer IP. Never fall back to the backend/server address or an XFF chain. See [the production profile](PRODUCTION_PROFILE.md#proxy-trust-cookies-and-progressive-hsts): enabling proxy trust requires stripping and overwriting **both** X-Forwarded-Proto and X-Real-IP and restricting backend ingress.
 
+For the controlled Nginx → Gunicorn Unix-socket deployment, a Unix peer is not an IP. The guard accepts that transport only when Gunicorn supplies a live `AF_UNIX` / `SOCK_STREAM` socket under its server-owned `gunicorn.socket` WSGI key. HTTP headers, string/attribute lookalikes, closed sockets, datagrams and TCP sockets cannot authorize this exception. Explicit proxy opt-in and the single valid overwritten X-Real-IP remain mandatory; missing socket metadata retains the existing TCP peer checks, with no XFF/server-address fallback.
+
+This non-standard key is coupled to Gunicorn: the deployed Gunicorn 23 sync-worker metadata and restricted Unix ingress must be verified before relying on it. Nginx may set the required headers through its standard `proxy_params` include; inspect that include rather than assuming inline directives. Other WSGI servers do not automatically acquire Unix-socket trust. No payer fields, prices, reservations or provider operations change.
+
 Loopback, unspecified, multicast and link-local payer addresses are rejected, including mapped IPv4 forms. Strict staging/production additionally require public IPs. Mocked development tests use explicit documentation-only synthetic addresses. Application parsing cannot certify proxy ingress or prove that an operator supplied the actual frontend client address; that remains an external operational gate.
 
 ## Tax, merchant and aggregate-cart contract

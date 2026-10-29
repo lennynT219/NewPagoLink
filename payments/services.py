@@ -3,6 +3,7 @@ import io
 import ipaddress
 import logging
 import re
+import socket
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Protocol, cast
@@ -160,6 +161,18 @@ def checkout_client_ip(request):
   raw = request.META.get('HTTP_X_REAL_IP') if trusted_proxy else request.META.get('REMOTE_ADDR')
   address = validate_client_ip(raw)
   if trusted_proxy:
+    # Gunicorn owns this environ key; an HTTP header is not transport evidence.
+    transport = request.META.get('gunicorn.socket')
+    try:
+      unix_stream = (
+        isinstance(transport, socket.socket)
+        and transport.family == socket.AF_UNIX
+        and transport.getsockopt(socket.SOL_SOCKET, socket.SO_TYPE) == socket.SOCK_STREAM
+      )
+    except OSError:
+      unix_stream = False
+    if unix_stream:
+      return address
     try:
       peer = ipaddress.ip_address(request.META.get('REMOTE_ADDR', ''))
     except ValueError as exc:
